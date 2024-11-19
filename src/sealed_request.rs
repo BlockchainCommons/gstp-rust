@@ -318,7 +318,7 @@ mod tests {
     use dcbor::Date;
     use bc_envelope::prelude::*;
 
-    use crate::Continuation;
+    use crate::{Continuation, SealedRequest, SealedRequestBehavior, SealedResponse, SealedResponseBehavior};
 
     fn request_id() -> ARID {
         ARID::from_data(hex!("c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc"))
@@ -384,13 +384,11 @@ mod tests {
         // would skip this and go straight to the next step.
         //
 
-        let signed_client_request_envelope: Envelope = (
-            client_request.clone(),
+        let signed_client_request_envelope = client_request.to_envelope(
             Some(&client_continuation_valid_until),
-            &client_private_key,
-        )
-            .clone()
-            .into();
+            Some(&client_private_key),
+            None,
+        );
         // println!("{}", envelope.format());
         assert_eq!(signed_client_request_envelope.format(), (indoc! {r#"
             {
@@ -420,12 +418,11 @@ mod tests {
         // encrypted to the server.
         //
 
-        let sealed_client_request_envelope: Envelope = (
-            client_request,
+        let sealed_client_request_envelope = client_request.to_envelope(
             Some(&client_continuation_valid_until),
-            &client_private_key,
-            &server_public_key,
-        ).into();
+            Some(&client_private_key),
+            Some(&server_public_key),
+        );
 
         //
         // The server receives and parses the envelope. No expected ID is
@@ -434,12 +431,12 @@ mod tests {
         // any returned continuation has not expired.
         //
 
-        let parsed_client_request = SealedRequest::try_from((
-            sealed_client_request_envelope,
+        let parsed_client_request = SealedRequest::try_from_envelope(
+            &sealed_client_request_envelope,
             None,
             Some(&now),
             &server_private_key,
-        ))?;
+        )?;
         assert_eq!(*parsed_client_request.function(), Into::<Function>::into("test"));
         assert_eq!(parsed_client_request.extract_object_for_parameter::<i32>("param1")?, 42);
         assert_eq!(
@@ -488,11 +485,11 @@ mod tests {
         //
 
         let server_continuation_valid_until = now.clone() + Duration::from_secs(60);
-        let signed_server_response_envelope: Envelope = (
-            server_response.clone(),
+        let signed_server_response_envelope = server_response.to_envelope(
             Some(&server_continuation_valid_until),
-            &server_private_key,
-        ).into();
+            Some(&server_private_key),
+            None,
+        );
         // println!("{}", signed_server_response_envelope.format());
         assert_eq!(signed_server_response_envelope.format(), (indoc! {r#"
             {
@@ -516,12 +513,11 @@ mod tests {
         // to the client.
         //
 
-        let sealed_server_response_envelope: Envelope = (
-            server_response,
+        let sealed_server_response_envelope = server_response.to_envelope(
             Some(&server_continuation_valid_until),
-            &server_private_key,
-            &client_public_key,
-        ).into();
+            Some(&server_private_key),
+            Some(&client_public_key),
+        );
 
         //
         // The server receives and parses the envelope. The ID of the original
@@ -530,12 +526,12 @@ mod tests {
         // that any returned continuation has not expired.
         //
 
-        let parsed_server_response = SealedResponse::try_from((
-            sealed_server_response_envelope,
+        let parsed_server_response = SealedResponse::try_from_encrypted_envelope(
+            &sealed_server_response_envelope,
             Some(parsed_client_request.id()),
             Some(&now),
             &client_private_key,
-        ))?;
+        )?;
 
         // println!("{}", parsed_server_response.result()?.format());
         assert_eq!(parsed_server_response.result()?.format(), (indoc! {r#"
