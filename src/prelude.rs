@@ -4,4 +4,6 @@ pub use crate::{
     SealedRequestBehavior,
     SealedResponse,
     SealedResponseBehavior,
+    SealedEvent,
+    SealedEventBehavior,
 };

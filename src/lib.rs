@@ -4,14 +4,14 @@ mod sealed_request;
 pub use sealed_request::{SealedRequest, SealedRequestBehavior};
 mod sealed_response;
 pub use sealed_response::{SealedResponse, SealedResponseBehavior};
+mod sealed_event;
+pub use sealed_event::{SealedEvent, SealedEventBehavior};
 
 pub mod prelude;
-
 
 #[cfg(test)]
 mod tests {
     use crate::prelude::*;
-    use anyhow::Result;
     use bc_components::{PrivateKeyBase, ARID};
     use dcbor::Date;
     use hex_literal::hex;
@@ -43,7 +43,7 @@ mod tests {
     }
 
     #[test]
-    fn test_request_continuation() -> Result<()> {
+    fn test_request_continuation() {
         bc_envelope::register_tags();
 
         let continuation = request_continuation();
@@ -59,17 +59,15 @@ mod tests {
             ]
         "#}.trim());
 
-        let parsed_continuation = Continuation::try_from_envelope(&envelope, Some(&request_id()), None, None)?;
+        let parsed_continuation = Continuation::try_from_envelope(&envelope, Some(&request_id()), None, None).unwrap();
         assert_eq!(continuation.state(), parsed_continuation.state());
         assert_eq!(continuation.id(), parsed_continuation.id());
         assert_eq!(continuation.valid_until(), parsed_continuation.valid_until());
         assert_eq!(continuation, parsed_continuation);
-
-        Ok(())
     }
 
     #[test]
-    fn test_response_continuation() -> Result<()> {
+    fn test_response_continuation() {
         bc_envelope::register_tags();
 
         let continuation = response_continuation();
@@ -84,17 +82,15 @@ mod tests {
             ]
         "#}.trim());
 
-        let parsed_continuation = Continuation::try_from_envelope(&envelope, None, None, None)?;
+        let parsed_continuation = Continuation::try_from_envelope(&envelope, None, None, None).unwrap();
         assert_eq!(continuation.state(), parsed_continuation.state());
         assert_eq!(continuation.id(), parsed_continuation.id());
         assert_eq!(continuation.valid_until(), parsed_continuation.valid_until());
         assert_eq!(continuation, parsed_continuation);
-
-        Ok(())
     }
 
     #[test]
-    fn test_encrypted_continuation() -> Result<()> {
+    fn test_encrypted_continuation() {
         bc_envelope::register_tags();
 
         let sender_private_key = PrivateKeyBase::new();
@@ -111,7 +107,7 @@ mod tests {
         "#}.trim());
 
         let valid_now = Some(request_date() + Duration::from_secs(30));
-        let parsed_continuation = Continuation::try_from_envelope(&envelope, Some(&request_id()), valid_now.as_ref(), Some(&sender_private_key))?;
+        let parsed_continuation = Continuation::try_from_envelope(&envelope, Some(&request_id()), valid_now.as_ref(), Some(&sender_private_key)).unwrap();
         assert_eq!(continuation.state(), parsed_continuation.state());
         assert_eq!(continuation.id(), parsed_continuation.id());
         assert_eq!(continuation.valid_until(), parsed_continuation.valid_until());
@@ -124,12 +120,10 @@ mod tests {
         let invalid_id = ARID::new();
         let invalid_continuation_error = Continuation::try_from_envelope(&envelope, Some(&invalid_id), valid_now.as_ref(), Some(&sender_private_key));
         assert!(invalid_continuation_error.is_err());
-
-        Ok(())
     }
 
     #[test]
-    fn test_sealed_request() -> Result<()> {
+    fn test_sealed_request() {
         bc_envelope::register_tags();
 
         //
@@ -142,7 +136,7 @@ mod tests {
         let client_private_key = PrivateKeyBase::new();
         let client_public_key = client_private_key.schnorr_public_key_base();
 
-        let now = Date::try_from("2024-07-04T11:11:11Z")?;
+        let now = Date::try_from("2024-07-04T11:11:11Z").unwrap();
 
         //
         // The server has previously sent the client this continuation. To the
@@ -193,7 +187,6 @@ mod tests {
             Some(&client_private_key),
             None,
         );
-        // println!("{}", envelope.format());
         assert_eq!(signed_client_request_envelope.format(), (indoc! {r#"
             {
                 request(ARID(c66be27d)) [
@@ -240,11 +233,11 @@ mod tests {
             None,
             Some(&now),
             &server_private_key,
-        )?;
+        ).unwrap();
         assert_eq!(*parsed_client_request.function(), Into::<Function>::into("test"));
-        assert_eq!(parsed_client_request.extract_object_for_parameter::<i32>("param1")?, 42);
+        assert_eq!(parsed_client_request.extract_object_for_parameter::<i32>("param1").unwrap(), 42);
         assert_eq!(
-            parsed_client_request.extract_object_for_parameter::<String>("param2")?,
+            parsed_client_request.extract_object_for_parameter::<String>("param2").unwrap(),
             "hello"
         );
         assert_eq!(parsed_client_request.note(), "This is a test");
@@ -335,10 +328,10 @@ mod tests {
             Some(parsed_client_request.id()),
             Some(&now),
             &client_private_key,
-        )?;
+        ).unwrap();
 
-        // println!("{}", parsed_server_response.result()?.format());
-        assert_eq!(parsed_server_response.result()?.format(), (indoc! {r#"
+        // println!("{}", parsed_server_response.result().unwrap().format());
+        assert_eq!(parsed_server_response.result().unwrap().format(), (indoc! {r#"
             "Records retrieved: 100-199"
         "#}).trim());
 
@@ -350,7 +343,87 @@ mod tests {
         assert_eq!(parsed_server_response.state().unwrap().format(), (indoc! {r#"
             "The state of things."
         "#}).trim());
+    }
 
-        Ok(())
+    #[test]
+    fn test_sealed_event() {
+        bc_envelope::register_tags();
+
+        //
+        // Generate keypairs for the peers.
+        //
+
+        let sender_private_key = PrivateKeyBase::new();
+        let sender_public_key = sender_private_key.schnorr_public_key_base();
+
+        let recipient_private_key = PrivateKeyBase::new();
+        let recipient_public_key = recipient_private_key.schnorr_public_key_base();
+
+        let now = Date::try_from("2024-07-04T11:11:11Z").unwrap();
+
+        //
+        // We're sending to a specific recipient, but we're not using a
+        // continuation as we're not expecting a response.
+        //
+
+        let event = SealedEvent::<String>::new("test", request_id(), &sender_public_key)
+            .with_note("This is a test")
+            .with_date(now.clone());
+
+        //
+        // We examine the form of the event envelope after it is signed by the
+        // sender, but before it is encrypted to the recipient. If this is a
+        // broadcast event, this would be the final form of the envelope.
+        //
+
+        let signed_event_envelope = event.to_envelope(
+            None,
+            Some(&sender_private_key),
+            None,
+        );
+
+        //
+        // We're not using a continuation, or a valid until date, so the envelope
+        // will not contain a sender continuation. We still support using both
+        // sender and recipient continuations, but they are not required.
+        //
+
+        assert_eq!(signed_event_envelope.format(), (indoc! {r#"
+            {
+                event(ARID(c66be27d)) [
+                    'content': "test"
+                    'date': 2024-07-04T11:11:11Z
+                    'note': "This is a test"
+                    'sender': PublicKeyBase
+                ]
+            } [
+                'signed': Signature
+            ]
+        "#}).trim());
+
+        //
+        // Create the ready-to-send event envelope, signed by the sender and
+        // encrypted to the recipient.
+        //
+
+        let sealed_event_envelope = event.to_envelope(
+            None,
+            Some(&sender_private_key),
+            Some(&recipient_public_key),
+        );
+
+        //
+        // The peer receives and parses the envelope.
+        //
+
+        let parsed_event = SealedEvent::<String>::try_from_envelope(
+            &sealed_event_envelope,
+            None,
+            None,
+            &recipient_private_key,
+        ).unwrap();
+        assert_eq!(parsed_event.content(), "test");
+        assert_eq!(parsed_event.note(), "This is a test");
+        assert_eq!(parsed_event.date(), Some(&now));
     }
 }
