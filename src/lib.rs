@@ -13,6 +13,8 @@ pub mod prelude;
 mod tests {
     use crate::prelude::*;
     use bc_components::{PrivateKeyBase, ARID};
+    use bc_rand::make_fake_random_number_generator;
+    use bc_xid::XIDDocument;
     use dcbor::Date;
     use hex_literal::hex;
     use indoc::indoc;
@@ -353,11 +355,12 @@ mod tests {
         // Generate keypairs for the peers.
         //
 
-        let sender_private_key = PrivateKeyBase::new();
-        let sender_public_key = sender_private_key.schnorr_public_key_base();
+        let mut rng = make_fake_random_number_generator();
+        let sender_private_key = PrivateKeyBase::new_using(&mut rng);
+        let sender = XIDDocument::from(&sender_private_key);
 
-        let recipient_private_key = PrivateKeyBase::new();
-        let recipient_public_key = recipient_private_key.schnorr_public_key_base();
+        let recipient_private_key = PrivateKeyBase::new_using(&mut rng);
+        let recipient = XIDDocument::from(&recipient_private_key);
 
         let now = Date::try_from("2024-07-04T11:11:11Z").unwrap();
 
@@ -366,7 +369,7 @@ mod tests {
         // continuation as we're not expecting a response.
         //
 
-        let event = SealedEvent::<String>::new("test", request_id(), &sender_public_key)
+        let event = SealedEvent::<String>::new("test", request_id(), &sender)
             .with_note("This is a test")
             .with_date(now.clone());
 
@@ -380,7 +383,7 @@ mod tests {
             None,
             Some(&sender_private_key),
             None,
-        );
+        ).unwrap();
 
         //
         // We're not using a continuation, or a valid until date, so the envelope
@@ -388,13 +391,18 @@ mod tests {
         // sender and recipient continuations, but they are not required.
         //
 
+        println!("{}", signed_event_envelope.format());
         assert_eq!(signed_event_envelope.format(), (indoc! {r#"
             {
                 event(ARID(c66be27d)) [
                     'content': "test"
                     'date': 2024-07-04T11:11:11Z
                     'note': "This is a test"
-                    'sender': PublicKeyBase
+                    'sender': XID(71274df1) [
+                        'key': PublicKeyBase [
+                            'allow': 'All'
+                        ]
+                    ]
                 ]
             } [
                 'signed': Signature
@@ -409,12 +417,15 @@ mod tests {
         let sealed_event_envelope = event.to_envelope(
             None,
             Some(&sender_private_key),
-            Some(&recipient_public_key),
-        );
+            Some(&recipient),
+        ).unwrap();
 
         //
         // The peer receives and parses the envelope.
         //
+
+        // let sender_inception_key = sender.inception_key().unwrap().signing_public_key();
+        // println!("{:?}", sender_inception_key);
 
         let parsed_event = SealedEvent::<String>::try_from_envelope(
             &sealed_event_envelope,

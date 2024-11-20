@@ -1,6 +1,7 @@
 use anyhow::{Result, bail};
-use bc_components::{PrivateKeyBase, PublicKeyBase, ARID};
+use bc_components::{PrivateKeyBase, ARID};
 use bc_envelope::prelude::*;
+use bc_xid::XIDDocument;
 use dcbor::Date;
 
 use crate::Continuation;
@@ -11,7 +12,7 @@ where
     T: EnvelopeEncodable + TryFrom<Envelope> + std::fmt::Debug + Clone + PartialEq,
 {
     event: Event<T>,
-    sender: PublicKeyBase,
+    sender: XIDDocument,
     // This is the continuation we're going to self-encrypt and send to the peer.
     state: Option<Envelope>,
     // This is a continuation we previously received from the peer and want to send back to them.
@@ -50,7 +51,7 @@ where
     pub fn new(
         content: impl Into<T>,
         id: impl AsRef<ARID>,
-        sender: impl AsRef<PublicKeyBase>
+        sender: impl AsRef<XIDDocument>
     ) -> Self {
         Self {
             event: Event::new(content, id),
@@ -129,7 +130,7 @@ where
     fn event(&self) -> &Event<T>;
 
     /// Returns the sender of the event.
-    fn sender(&self) -> &PublicKeyBase;
+    fn sender(&self) -> &XIDDocument;
 
     /// Returns the continuation we're going to self-encrypt and send to the recipient.
     fn state(&self) -> Option<&Envelope>;
@@ -170,7 +171,7 @@ where
         &self.event
     }
 
-    fn sender(&self) -> &PublicKeyBase {
+    fn sender(&self) -> &XIDDocument {
         &self.sender
     }
 
@@ -200,18 +201,20 @@ where
         &self,
         valid_until: Option<&Date>,
         sender_private_key: Option<&PrivateKeyBase>,
-        recipient_public_key: Option<&PublicKeyBase>
-    ) -> Envelope {
+        recipient: Option<&XIDDocument>
+    ) -> Result<Envelope> {
+        let sender_encryption_key = self.sender.encryption_key()
+            .ok_or_else(|| anyhow::anyhow!("Sender must have an encryption key"))?;
         let sender_continuation: Option<Envelope> = if let Some(state) = &self.state {
             Some(Continuation::new(state.clone())
                 .with_optional_valid_until(valid_until)
-                .to_envelope(Some(&self.sender))
+                .to_envelope(Some(sender_encryption_key))
             )
         } else {
             valid_until.map(|valid_until|
                 Continuation::new(Envelope::null())
                 .with_valid_until(valid_until)
-                .to_envelope(Some(&self.sender))
+                .to_envelope(Some(sender_encryption_key))
             )
         };
 
@@ -229,11 +232,13 @@ where
             result = result.sign(sender_private_key);
         }
 
-        if let Some(recipient_public_key) = recipient_public_key {
-            result = result.encrypt_to_recipient(recipient_public_key);
+        if let Some(recipient) = recipient {
+            let recipient_encryption_key = recipient.encryption_key()
+                .ok_or_else(|| anyhow::anyhow!("Recipient must have an encryption key"))?;
+            result = result.encrypt_to_recipient(recipient_encryption_key);
         }
 
-        result
+        Ok(result)
     }
 
     pub fn try_from_envelope(
@@ -243,10 +248,13 @@ where
         recipient_private_key: &PrivateKeyBase
     ) -> Result<Self> {
         let signed_envelope = encrypted_envelope.decrypt_to_recipient(recipient_private_key)?;
-        let sender_public_key: PublicKeyBase = signed_envelope
+        let sender: XIDDocument = signed_envelope
             .unwrap_envelope()?
-            .extract_object_for_predicate(known_values::SENDER)?;
-        let event_envelope = signed_envelope.verify(&sender_public_key)?;
+            .object_for_predicate(known_values::SENDER)?
+            .try_into()?;
+        let sender_verification_key = sender.verification_key()
+            .ok_or_else(|| anyhow::anyhow!("Sender must have a verification key"))?;
+        let event_envelope = signed_envelope.verify(sender_verification_key)?;
         let peer_continuation = event_envelope.optional_object_for_predicate(
             known_values::SENDER_CONTINUATION
         )?;
@@ -273,7 +281,7 @@ where
         let event = Event::<T>::try_from(event_envelope)?;
         Ok(Self {
             event,
-            sender: sender_public_key,
+            sender,
             state,
             peer_continuation,
         })

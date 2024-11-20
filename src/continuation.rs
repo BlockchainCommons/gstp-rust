@@ -1,5 +1,5 @@
 use dcbor::Date;
-use bc_components::{PrivateKeyBase, PublicKeyBase, ARID};
+use bc_components::{Encrypter, PrivateKeyBase, ARID};
 use bc_envelope::prelude::*;
 use anyhow::{bail, Result};
 
@@ -95,13 +95,13 @@ impl Continuation {
 }
 
 impl Continuation {
-    pub fn to_envelope(&self, sender: Option<&PublicKeyBase>) -> Envelope {
+    pub fn to_envelope(&self, sender_encryption_key: Option<&dyn Encrypter>) -> Envelope {
         let mut result = self.state
             .wrap_envelope()
             .add_optional_assertion(known_values::ID, self.valid_id.clone())
             .add_optional_assertion(known_values::VALID_UNTIL, self.valid_until.clone());
 
-        if let Some(sender) = sender {
+        if let Some(sender) = sender_encryption_key {
             result = result.encrypt_to_recipient(sender);
         }
 

@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 dcbor = { version = "^0.15.0", features = ["multithreaded"] }
+bc-rand = "^0.2.0"
 bc-components = "^0.13.0"
 bc-envelope = "^0.18.2"
 bc-xid = "^0.1.0"
