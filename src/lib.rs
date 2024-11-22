@@ -132,11 +132,13 @@ mod tests {
         // Generate keypairs for the server and client.
         //
 
-        let server_private_key = PrivateKeyBase::new();
-        let server_public_key = server_private_key.schnorr_public_key_base();
+        let mut rng = make_fake_random_number_generator();
+        let server_private_key = PrivateKeyBase::new_using(&mut rng);
+        let server = XIDDocument::from(&server_private_key);
+        let server_encryption_key = server.encryption_key().unwrap();
 
-        let client_private_key = PrivateKeyBase::new();
-        let client_public_key = client_private_key.schnorr_public_key_base();
+        let client_private_key = PrivateKeyBase::new_using(&mut rng);
+        let client = XIDDocument::from(&client_private_key);
 
         let now = Date::try_from("2024-07-04T11:11:11Z").unwrap();
 
@@ -159,7 +161,7 @@ mod tests {
         let server_continuation = Continuation::new(server_state).with_valid_until(
             server_continuation_valid_until
         );
-        let server_continuation = server_continuation.to_envelope(Some(&server_public_key));
+        let server_continuation = server_continuation.to_envelope(Some(server_encryption_key));
 
         //
         // The client composes a request to the server, returning to it the
@@ -170,7 +172,7 @@ mod tests {
 
         // The client's continuation is valid for 60 seconds from now.
         let client_continuation_valid_until = now.clone() + Duration::from_secs(60);
-        let client_request = SealedRequest::new("test", request_id(), &client_public_key)
+        let client_request = SealedRequest::new("test", request_id(), &client)
             .with_parameter("param1", 42)
             .with_parameter("param2", "hello")
             .with_note("This is a test")
@@ -188,7 +190,8 @@ mod tests {
             Some(&client_continuation_valid_until),
             Some(&client_private_key),
             None,
-        );
+        ).unwrap();
+        // println!("{}", signed_client_request_envelope.format());
         assert_eq!(signed_client_request_envelope.format(), (indoc! {r#"
             {
                 request(ARID(c66be27d)) [
@@ -201,7 +204,11 @@ mod tests {
                     'recipientContinuation': ENCRYPTED [
                         'hasRecipient': SealedMessage
                     ]
-                    'sender': PublicKeyBase
+                    'sender': XID(7c30cafe) [
+                        'key': PublicKeyBase [
+                            'allow': 'All'
+                        ]
+                    ]
                     'senderContinuation': ENCRYPTED [
                         'hasRecipient': SealedMessage
                     ]
@@ -220,8 +227,8 @@ mod tests {
         let sealed_client_request_envelope = client_request.to_envelope(
             Some(&client_continuation_valid_until),
             Some(&client_private_key),
-            Some(&server_public_key),
-        );
+            Some(&server),
+        ).unwrap();
 
         //
         // The server receives and parses the envelope. No expected ID is
@@ -271,7 +278,7 @@ mod tests {
 
         let server_response = SealedResponse::new_success(
             parsed_client_request.id(),
-            server_public_key
+            server
         )
             .with_result("Records retrieved: 100-199")
             .with_state(state)
@@ -288,7 +295,7 @@ mod tests {
             Some(&server_continuation_valid_until),
             Some(&server_private_key),
             None,
-        );
+        ).unwrap();
         // println!("{}", signed_server_response_envelope.format());
         assert_eq!(signed_server_response_envelope.format(), (indoc! {r#"
             {
@@ -297,7 +304,11 @@ mod tests {
                         'hasRecipient': SealedMessage
                     ]
                     'result': "Records retrieved: 100-199"
-                    'sender': PublicKeyBase
+                    'sender': XID(71274df1) [
+                        'key': PublicKeyBase [
+                            'allow': 'All'
+                        ]
+                    ]
                     'senderContinuation': ENCRYPTED [
                         'hasRecipient': SealedMessage
                     ]
@@ -315,8 +326,8 @@ mod tests {
         let sealed_server_response_envelope = server_response.to_envelope(
             Some(&server_continuation_valid_until),
             Some(&server_private_key),
-            Some(&client_public_key),
-        );
+            Some(&client),
+        ).unwrap();
 
         //
         // The server receives and parses the envelope. The ID of the original

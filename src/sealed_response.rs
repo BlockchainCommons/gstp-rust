@@ -1,5 +1,6 @@
 use anyhow::{ bail, Error, Result };
-use bc_components::{ PrivateKeyBase, PublicKeyBase, ARID };
+use bc_components::{ PrivateKeyBase, ARID };
+use bc_xid::XIDDocument;
 use dcbor::{ prelude::*, Date };
 use bc_envelope::prelude::*;
 
@@ -8,7 +9,7 @@ use super::Continuation;
 #[derive(Debug, Clone, PartialEq)]
 pub struct SealedResponse {
     response: Response,
-    sender: PublicKeyBase,
+    sender: XIDDocument,
     // This is the continuation we're going to self-encrypt and send to the peer.
     state: Option<Envelope>,
     // This is a continuation we previously received from the peer and want to send back to them.
@@ -35,7 +36,7 @@ impl SealedResponse {
     // Success Composition
     //
 
-    pub fn new_success(id: impl AsRef<ARID>, sender: impl AsRef<PublicKeyBase>) -> Self {
+    pub fn new_success(id: impl AsRef<ARID>, sender: impl AsRef<XIDDocument>) -> Self {
         Self {
             response: Response::new_success(id),
             sender: sender.as_ref().clone(),
@@ -48,7 +49,7 @@ impl SealedResponse {
     // Failure Composition
     //
 
-    pub fn new_failure(id: impl AsRef<ARID>, sender: impl AsRef<PublicKeyBase>) -> Self {
+    pub fn new_failure(id: impl AsRef<ARID>, sender: impl AsRef<XIDDocument>) -> Self {
         Self {
             response: Response::new_failure(id),
             sender: sender.as_ref().clone(),
@@ -59,7 +60,7 @@ impl SealedResponse {
 
     /// An early failure takes place before the message has been decrypted,
     /// and therefore the ID and sender public key are not known.
-    pub fn new_early_failure(sender: impl AsRef<PublicKeyBase>) -> Self {
+    pub fn new_early_failure(sender: impl AsRef<XIDDocument>) -> Self {
         Self {
             response: Response::new_early_failure(),
             sender: sender.as_ref().clone(),
@@ -86,7 +87,7 @@ pub trait SealedResponseBehavior: ResponseBehavior {
     // Parsing
     //
 
-    fn sender(&self) -> &PublicKeyBase;
+    fn sender(&self) -> &XIDDocument;
 
     fn state(&self) -> Option<&Envelope>;
 
@@ -127,7 +128,7 @@ impl SealedResponseBehavior for SealedResponse {
     // Parsing
     //
 
-    fn sender(&self) -> &PublicKeyBase {
+    fn sender(&self) -> &XIDDocument {
         self.sender.as_ref()
     }
 
@@ -210,12 +211,14 @@ impl SealedResponse {
         &self,
         valid_until: Option<&Date>,
         sender_private_key: Option<&PrivateKeyBase>,
-        recipient_public_key: Option<&PublicKeyBase>
-    ) -> Envelope {
+        recipient: Option<&XIDDocument>
+    ) -> Result<Envelope> {
         let sender_continuation: Option<Envelope>;
         if let Some(state) = &self.state {
             let continuation = Continuation::new(state).with_optional_valid_until(valid_until);
-            sender_continuation = Some(continuation.to_envelope(Some(&self.sender)));
+            let sender_encryption_key = self.sender.encryption_key()
+                .ok_or_else(|| anyhow::anyhow!("Sender must have an encryption key"))?;
+            sender_continuation = Some(continuation.to_envelope(Some(sender_encryption_key)));
         } else {
             sender_continuation = None;
         }
@@ -234,11 +237,13 @@ impl SealedResponse {
             result = result.sign(sender_private_key);
         }
 
-        if let Some(recipient_public_key) = recipient_public_key {
-            result = result.encrypt_to_recipient(recipient_public_key);
+        if let Some(recipient) = recipient {
+            let recipient_encryption_key = recipient.encryption_key()
+                .ok_or_else(|| anyhow::anyhow!("Recipient must have an encryption key"))?;
+            result = result.encrypt_to_recipient(recipient_encryption_key);
         }
 
-        result
+        Ok(result)
     }
 
     pub fn try_from_encrypted_envelope(
@@ -248,10 +253,13 @@ impl SealedResponse {
         recipient_private_key: &PrivateKeyBase
     ) -> Result<Self> {
         let signed_envelope = encrypted_envelope.decrypt_to_recipient(recipient_private_key)?;
-        let sender_public_key: PublicKeyBase = signed_envelope
+        let sender: XIDDocument = signed_envelope
             .unwrap_envelope()?
-            .extract_object_for_predicate(known_values::SENDER)?;
-        let response_envelope = signed_envelope.verify(&sender_public_key)?;
+            .object_for_predicate(known_values::SENDER)?
+            .try_into()?;
+        let sender_verification_key = sender.verification_key()
+            .ok_or_else(|| anyhow::anyhow!("Sender must have a verification key"))?;
+        let response_envelope = signed_envelope.verify(sender_verification_key)?;
         let peer_continuation = response_envelope.optional_object_for_predicate(
             known_values::SENDER_CONTINUATION
         )?;
@@ -282,7 +290,7 @@ impl SealedResponse {
         let response = Response::try_from(response_envelope)?;
         Ok(Self {
             response,
-            sender: sender_public_key,
+            sender,
             state,
             peer_continuation,
         })
