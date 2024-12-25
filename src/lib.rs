@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/gstp/0.2.0")]
+#![doc(html_root_url = "https://docs.rs/gstp/0.3.0")]
 #![warn(rust_2018_idioms)]
 
 //! # Introduction
@@ -20,7 +20,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! gstp = "0.2.0"
+//! gstp = "0.3.0"
 //! ```
 //!
 //! # Examples
@@ -42,7 +42,7 @@ pub mod prelude;
 #[cfg(test)]
 mod tests {
     use crate::prelude::*;
-    use bc_components::{PrivateKeyBase, ARID};
+    use bc_components::{PrivateKeyBase, PublicKeyBaseProvider, ARID};
     use bc_rand::make_fake_random_number_generator;
     use bc_xid::XIDDocument;
     use dcbor::Date;
@@ -126,7 +126,7 @@ mod tests {
         bc_envelope::register_tags();
 
         let sender_private_key = PrivateKeyBase::new();
-        let sender_public_key = sender_private_key.schnorr_public_key_base();
+        let sender_public_key = sender_private_key.public_key_base();
 
         let continuation = request_continuation();
         let envelope = continuation.to_envelope(Some(&sender_public_key));
@@ -235,7 +235,7 @@ mod tests {
                         'hasRecipient': SealedMessage
                     ]
                     'sender': XID(7c30cafe) [
-                        'key': PublicKeyBase [
+                        'key': PublicKeyBase(b8164d99) [
                             'allow': 'All'
                         ]
                     ]
@@ -335,7 +335,7 @@ mod tests {
                     ]
                     'result': "Records retrieved: 100-199"
                     'sender': XID(71274df1) [
-                        'key': PublicKeyBase [
+                        'key': PublicKeyBase(eb9b1cae) [
                             'allow': 'All'
                         ]
                     ]
@@ -440,7 +440,7 @@ mod tests {
                     'date': 2024-07-04T11:11:11Z
                     'note': "This is a test"
                     'sender': XID(71274df1) [
-                        'key': PublicKeyBase [
+                        'key': PublicKeyBase(eb9b1cae) [
                             'allow': 'All'
                         ]
                     ]
