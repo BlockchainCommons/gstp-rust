@@ -1,8 +1,8 @@
 use anyhow::{ bail, Error, Result };
-use bc_components::{ PrivateKeyBase, ARID };
+use bc_components::{ PrivateKeys, ARID };
 use bc_xid::XIDDocument;
 use dcbor::{ prelude::*, Date };
-use bc_envelope::prelude::*;
+use bc_envelope::{prelude::*, Signer};
 
 use super::Continuation;
 
@@ -210,7 +210,7 @@ impl SealedResponse {
     pub fn to_envelope(
         &self,
         valid_until: Option<&Date>,
-        sender_private_key: Option<&PrivateKeyBase>,
+        sender: Option<&dyn Signer>,
         recipient: Option<&XIDDocument>
     ) -> Result<Envelope> {
         let sender_continuation: Option<Envelope>;
@@ -233,7 +233,7 @@ impl SealedResponse {
                 self.peer_continuation.clone()
             );
 
-        if let Some(sender_private_key) = sender_private_key {
+        if let Some(sender_private_key) = sender {
             result = result.sign(sender_private_key);
         }
 
@@ -250,7 +250,7 @@ impl SealedResponse {
         encrypted_envelope: &Envelope,
         expected_id: Option<&ARID>,
         now: Option<&Date>,
-        recipient_private_key: &PrivateKeyBase
+        recipient_private_key: &PrivateKeys
     ) -> Result<Self> {
         let signed_envelope = encrypted_envelope.decrypt_to_recipient(recipient_private_key)?;
         let sender: XIDDocument = signed_envelope

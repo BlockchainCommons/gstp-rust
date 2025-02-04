@@ -1,8 +1,8 @@
 use anyhow::{ bail, Error, Result };
-use bc_components::{ PrivateKeyBase, ARID };
+use bc_components::{ PrivateKeys, ARID };
 use bc_xid::XIDDocument;
 use dcbor::{ prelude::*, Date };
-use bc_envelope::prelude::*;
+use bc_envelope::{prelude::*, Signer};
 
 use super::Continuation;
 
@@ -236,7 +236,7 @@ impl SealedRequest {
     pub fn to_envelope(
         &self,
         valid_until: Option<&Date>,
-        sender_private_key: Option<&PrivateKeyBase>,
+        sender: Option<&dyn Signer>,
         recipient: Option<&XIDDocument>
     ) -> Result<Envelope> {
         // Even if no state is provided, requests always include a continuation
@@ -259,7 +259,7 @@ impl SealedRequest {
                 self.peer_continuation.clone()
             );
 
-        if let Some(sender_private_key) = sender_private_key {
+        if let Some(sender_private_key) = sender {
             result = result.sign(sender_private_key);
         }
 
@@ -273,8 +273,8 @@ impl SealedRequest {
         Ok(result)
     }
 
-    pub fn try_from_envelope(encrypted_envelope: &Envelope, id: Option<&ARID>, now: Option<&Date>, recipient_private_key: &PrivateKeyBase) -> Result<Self> {
-        let signed_envelope = encrypted_envelope.decrypt_to_recipient(recipient_private_key)?;
+    pub fn try_from_envelope(encrypted_envelope: &Envelope, id: Option<&ARID>, now: Option<&Date>, recipient: &PrivateKeys) -> Result<Self> {
+        let signed_envelope = encrypted_envelope.decrypt_to_recipient(recipient)?;
         let sender: XIDDocument = signed_envelope
             .unwrap_envelope()?
             .object_for_predicate(known_values::SENDER)?
@@ -301,7 +301,7 @@ impl SealedRequest {
                 &encrypted_continuation,
                 id,
                 now,
-                Some(recipient_private_key),
+                Some(recipient),
             )?;
             state = Some(continuation.state().clone());
         } else {

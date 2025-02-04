@@ -1,6 +1,6 @@
-use anyhow::{Result, bail};
-use bc_components::{PrivateKeyBase, ARID};
-use bc_envelope::prelude::*;
+use anyhow::{ Result, bail };
+use bc_components::{ PrivateKeys, ARID };
+use bc_envelope::{ prelude::*, Signer };
 use bc_xid::XIDDocument;
 use dcbor::Date;
 
@@ -8,9 +8,7 @@ use crate::Continuation;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SealedEvent<T>
-where
-    T: EnvelopeEncodable + TryFrom<Envelope> + std::fmt::Debug + Clone + PartialEq,
-{
+    where T: EnvelopeEncodable + TryFrom<Envelope> + std::fmt::Debug + Clone + PartialEq {
     event: Event<T>,
     sender: XIDDocument,
     // This is the continuation we're going to self-encrypt and send to the peer.
@@ -19,10 +17,9 @@ where
     peer_continuation: Option<Envelope>,
 }
 
-
-impl<T> std::fmt::Display for SealedEvent<T>
-where
-    T: EnvelopeEncodable + TryFrom<Envelope> + std::fmt::Debug + Clone + PartialEq,
+impl<T> std::fmt::Display
+    for SealedEvent<T>
+    where T: EnvelopeEncodable + TryFrom<Envelope> + std::fmt::Debug + Clone + PartialEq
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -45,8 +42,7 @@ where
 // Composition
 //
 impl<T> SealedEvent<T>
-where
-    T: EnvelopeEncodable + TryFrom<Envelope> + std::fmt::Debug + Clone + PartialEq,
+    where T: EnvelopeEncodable + TryFrom<Envelope> + std::fmt::Debug + Clone + PartialEq
 {
     pub fn new(
         content: impl Into<T>,
@@ -62,9 +58,9 @@ where
     }
 }
 
-impl<T> EventBehavior<T> for SealedEvent<T>
-where
-    T: EnvelopeEncodable + TryFrom<Envelope> + std::fmt::Debug + Clone + PartialEq,
+impl<T> EventBehavior<T>
+    for SealedEvent<T>
+    where T: EnvelopeEncodable + TryFrom<Envelope> + std::fmt::Debug + Clone + PartialEq
 {
     fn with_note(self, note: impl Into<String>) -> Self {
         Self {
@@ -99,12 +95,11 @@ where
     fn date(&self) -> Option<&Date> {
         self.event.date()
     }
-
 }
 
-pub trait SealedEventBehavior<T>: EventBehavior<T>
-where
-    T: EnvelopeEncodable + TryFrom<Envelope> + std::fmt::Debug + Clone + PartialEq,
+pub trait SealedEventBehavior<T>
+    : EventBehavior<T>
+    where T: EnvelopeEncodable + TryFrom<Envelope> + std::fmt::Debug + Clone + PartialEq
 {
     //
     // Composition
@@ -139,9 +134,9 @@ where
     fn peer_continuation(&self) -> Option<&Envelope>;
 }
 
-impl<T> SealedEventBehavior<T> for SealedEvent<T>
-where
-    T: EnvelopeEncodable + TryFrom<Envelope> + std::fmt::Debug + Clone + PartialEq,
+impl<T> SealedEventBehavior<T>
+    for SealedEvent<T>
+    where T: EnvelopeEncodable + TryFrom<Envelope> + std::fmt::Debug + Clone + PartialEq
 {
     fn with_state(mut self, state: impl EnvelopeEncodable) -> Self {
         self.state = Some(state.into_envelope());
@@ -184,9 +179,9 @@ where
     }
 }
 
-impl<T> From<SealedEvent<T>> for Event<T>
-where
-    T: EnvelopeEncodable + TryFrom<Envelope> + std::fmt::Debug + Clone + PartialEq,
+impl<T> From<SealedEvent<T>>
+    for Event<T>
+    where T: EnvelopeEncodable + TryFrom<Envelope> + std::fmt::Debug + Clone + PartialEq
 {
     fn from(sealed_event: SealedEvent<T>) -> Self {
         sealed_event.event
@@ -194,27 +189,28 @@ where
 }
 
 impl<T> SealedEvent<T>
-where
-    T: EnvelopeEncodable + TryFrom<Envelope> + std::fmt::Debug + Clone + PartialEq,
+    where T: EnvelopeEncodable + TryFrom<Envelope> + std::fmt::Debug + Clone + PartialEq
 {
     pub fn to_envelope(
         &self,
         valid_until: Option<&Date>,
-        sender_private_key: Option<&PrivateKeyBase>,
+        sender: Option<&dyn Signer>,
         recipient: Option<&XIDDocument>
     ) -> Result<Envelope> {
-        let sender_encryption_key = self.sender.encryption_key()
+        let sender_encryption_key = self.sender
+            .encryption_key()
             .ok_or_else(|| anyhow::anyhow!("Sender must have an encryption key"))?;
         let sender_continuation: Option<Envelope> = if let Some(state) = &self.state {
-            Some(Continuation::new(state.clone())
-                .with_optional_valid_until(valid_until)
-                .to_envelope(Some(sender_encryption_key))
+            Some(
+                Continuation::new(state.clone())
+                    .with_optional_valid_until(valid_until)
+                    .to_envelope(Some(sender_encryption_key))
             )
         } else {
             valid_until.map(|valid_until|
                 Continuation::new(Envelope::null())
-                .with_valid_until(valid_until)
-                .to_envelope(Some(sender_encryption_key))
+                    .with_valid_until(valid_until)
+                    .to_envelope(Some(sender_encryption_key))
             )
         };
 
@@ -228,12 +224,13 @@ where
                 self.peer_continuation.clone()
             );
 
-        if let Some(sender_private_key) = sender_private_key {
+        if let Some(sender_private_key) = sender {
             result = result.sign(sender_private_key);
         }
 
         if let Some(recipient) = recipient {
-            let recipient_encryption_key = recipient.encryption_key()
+            let recipient_encryption_key = recipient
+                .encryption_key()
                 .ok_or_else(|| anyhow::anyhow!("Recipient must have an encryption key"))?;
             result = result.encrypt_to_recipient(recipient_encryption_key);
         }
@@ -245,14 +242,15 @@ where
         encrypted_envelope: &Envelope,
         expected_id: Option<&ARID>,
         now: Option<&Date>,
-        recipient_private_key: &PrivateKeyBase
+        recipient_private_key: &PrivateKeys
     ) -> Result<Self> {
         let signed_envelope = encrypted_envelope.decrypt_to_recipient(recipient_private_key)?;
         let sender: XIDDocument = signed_envelope
             .unwrap_envelope()?
             .object_for_predicate(known_values::SENDER)?
             .try_into()?;
-        let sender_verification_key = sender.verification_key()
+        let sender_verification_key = sender
+            .verification_key()
             .ok_or_else(|| anyhow::anyhow!("Sender must have a verification key"))?;
         let event_envelope = signed_envelope.verify(sender_verification_key)?;
         let peer_continuation = event_envelope.optional_object_for_predicate(
@@ -272,7 +270,7 @@ where
                 &encrypted_continuation,
                 expected_id,
                 now,
-                Some(recipient_private_key),
+                Some(recipient_private_key)
             )?;
             state = Some(continuation.state().clone());
         } else {
