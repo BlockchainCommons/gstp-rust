@@ -27,8 +27,8 @@ fn test_encrypted_continuation() {
     bc_envelope::register_tags();
 
     let (sender_private_keys, sender_public_keys) = keypair_opt(
-        SignatureScheme::Dilithium2,
-        EncapsulationScheme::Kyber512
+        SignatureScheme::MLDSA44,
+        EncapsulationScheme::MLKEM512
     );
 
     let continuation = request_continuation();
@@ -40,7 +40,7 @@ fn test_encrypted_continuation() {
             indoc! {
                 r#"
         ENCRYPTED [
-            'hasRecipient': SealedMessage(Kyber512)
+            'hasRecipient': SealedMessage(MLKEM512)
         ]
     "#
             }
@@ -87,8 +87,8 @@ fn test_sealed_request() {
     //
 
     let (server_private_keys, server_public_keys) = keypair_opt(
-        SignatureScheme::Dilithium2,
-        EncapsulationScheme::Kyber512
+        SignatureScheme::MLDSA44,
+        EncapsulationScheme::MLKEM512
     );
     let server = XIDDocument::new_with_keys(
         server_private_keys.clone(),
@@ -96,8 +96,8 @@ fn test_sealed_request() {
     );
 
     let (client_private_keys, client_public_keys) = keypair_opt(
-        SignatureScheme::Dilithium2,
-        EncapsulationScheme::Kyber512
+        SignatureScheme::MLDSA44,
+        EncapsulationScheme::MLKEM512
     );
     let client = XIDDocument::new_with_keys(
         client_private_keys.clone(),
@@ -303,8 +303,8 @@ fn test_sealed_event() {
     //
 
     let (sender_private_keys, sender_public_keys) = keypair_opt(
-        SignatureScheme::Dilithium2,
-        EncapsulationScheme::Kyber512
+        SignatureScheme::MLDSA44,
+        EncapsulationScheme::MLKEM512
     );
     let sender = XIDDocument::new_with_keys(
         sender_private_keys.clone(),
@@ -312,8 +312,8 @@ fn test_sealed_event() {
     );
 
     let (recipient_private_keys, recipient_public_keys) = keypair_opt(
-        SignatureScheme::Dilithium2,
-        EncapsulationScheme::Kyber512
+        SignatureScheme::MLDSA44,
+        EncapsulationScheme::MLKEM512
     );
     let recipient = XIDDocument::new_with_keys(
         recipient_private_keys.clone(),

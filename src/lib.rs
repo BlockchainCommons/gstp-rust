@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/gstp/0.4.0")]
+#![doc(html_root_url = "https://docs.rs/gstp/0.5.0")]
 #![warn(rust_2018_idioms)]
 
 //! # Introduction
@@ -20,7 +20,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! gstp = "0.4.0"
+//! gstp = "0.5.0"
 //! ```
 //!
 //! # Examples
@@ -31,11 +31,11 @@
 mod continuation;
 pub use continuation::Continuation;
 mod sealed_request;
-pub use sealed_request::{ SealedRequest, SealedRequestBehavior };
+pub use sealed_request::{SealedRequest, SealedRequestBehavior};
 mod sealed_response;
-pub use sealed_response::{ SealedResponse, SealedResponseBehavior };
+pub use sealed_response::{SealedResponse, SealedResponseBehavior};
 mod sealed_event;
-pub use sealed_event::{ SealedEvent, SealedEventBehavior };
+pub use sealed_event::{SealedEvent, SealedEventBehavior};
 
 pub mod prelude;
 
