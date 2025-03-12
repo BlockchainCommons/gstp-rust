@@ -77,14 +77,14 @@ impl Continuation {
 
     pub fn is_valid_date(&self, now: Option<&Date>) -> bool {
         match now {
-            Some(now) => self.valid_until().map_or(true, |valid_until| valid_until > now),
+            Some(now) => self.valid_until().is_none_or(|valid_until| valid_until > now),
             None => true,
         }
     }
 
     pub fn is_valid_id(&self, id: Option<&ARID>) -> bool {
         match id {
-            Some(expected_id) => self.valid_id.as_ref().map_or(true, |id| id == expected_id),
+            Some(expected_id) => self.valid_id.as_ref().is_none_or(|id| id == expected_id),
             None => true,
         }
     }
