@@ -36,7 +36,7 @@ impl SealedResponse {
     // Success Composition
     //
 
-    pub fn new_success(id: impl AsRef<ARID>, sender: impl AsRef<XIDDocument>) -> Self {
+    pub fn new_success(id: ARID, sender: impl AsRef<XIDDocument>) -> Self {
         Self {
             response: Response::new_success(id),
             sender: sender.as_ref().clone(),
@@ -49,7 +49,7 @@ impl SealedResponse {
     // Failure Composition
     //
 
-    pub fn new_failure(id: impl AsRef<ARID>, sender: impl AsRef<XIDDocument>) -> Self {
+    pub fn new_failure(id: ARID, sender: impl AsRef<XIDDocument>) -> Self {
         Self {
             response: Response::new_failure(id),
             sender: sender.as_ref().clone(),
@@ -181,11 +181,11 @@ impl ResponseBehavior for SealedResponse {
         self.response.err()
     }
 
-    fn id(&self) -> Option<&ARID> {
+    fn id(&self) -> Option<ARID> {
         self.response.id()
     }
 
-    fn expect_id(&self) -> &ARID {
+    fn expect_id(&self) -> ARID {
         self.response.expect_id()
     }
 
@@ -248,7 +248,7 @@ impl SealedResponse {
 
     pub fn try_from_encrypted_envelope(
         encrypted_envelope: &Envelope,
-        expected_id: Option<&ARID>,
+        expected_id: Option<ARID>,
         now: Option<&Date>,
         recipient_private_key: &PrivateKeys
     ) -> Result<Self> {

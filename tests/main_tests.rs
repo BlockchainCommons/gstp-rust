@@ -48,7 +48,7 @@ fn test_request_continuation() {
         ]
     "#}.trim());
 
-    let parsed_continuation = Continuation::try_from_envelope(&envelope, Some(&request_id()), None, None).unwrap();
+    let parsed_continuation = Continuation::try_from_envelope(&envelope, Some(request_id()), None, None).unwrap();
     assert_eq!(continuation.state(), parsed_continuation.state());
     assert_eq!(continuation.id(), parsed_continuation.id());
     assert_eq!(continuation.valid_until(), parsed_continuation.valid_until());
@@ -94,18 +94,18 @@ fn test_encrypted_continuation() {
     "#}.trim());
 
     let valid_now = Some(request_date() + Duration::from_secs(30));
-    let parsed_continuation = Continuation::try_from_envelope(&envelope, Some(&request_id()), valid_now.as_ref(), Some(&sender_private_keys)).unwrap();
+    let parsed_continuation = Continuation::try_from_envelope(&envelope, Some(request_id()), valid_now.as_ref(), Some(&sender_private_keys)).unwrap();
     assert_eq!(continuation.state(), parsed_continuation.state());
     assert_eq!(continuation.id(), parsed_continuation.id());
     assert_eq!(continuation.valid_until(), parsed_continuation.valid_until());
     assert_eq!(continuation, parsed_continuation);
 
     let invalid_now = Some(request_date() + Duration::from_secs(90));
-    let invalid_continuation_error = Continuation::try_from_envelope(&envelope, Some(&request_id()), invalid_now.as_ref(), Some(&sender_private_keys));
+    let invalid_continuation_error = Continuation::try_from_envelope(&envelope, Some(request_id()), invalid_now.as_ref(), Some(&sender_private_keys));
     assert!(invalid_continuation_error.is_err());
 
     let invalid_id = ARID::new();
-    let invalid_continuation_error = Continuation::try_from_envelope(&envelope, Some(&invalid_id), valid_now.as_ref(), Some(&sender_private_keys));
+    let invalid_continuation_error = Continuation::try_from_envelope(&envelope, Some(invalid_id), valid_now.as_ref(), Some(&sender_private_keys));
     assert!(invalid_continuation_error.is_err());
 }
 

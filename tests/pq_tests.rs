@@ -50,7 +50,7 @@ fn test_encrypted_continuation() {
     let valid_now = Some(request_date() + Duration::from_secs(30));
     let parsed_continuation = Continuation::try_from_envelope(
         &envelope,
-        Some(&request_id()),
+        Some(request_id()),
         valid_now.as_ref(),
         Some(&sender_private_keys)
     ).unwrap();
@@ -62,7 +62,7 @@ fn test_encrypted_continuation() {
     let invalid_now = Some(request_date() + Duration::from_secs(90));
     let invalid_continuation_error = Continuation::try_from_envelope(
         &envelope,
-        Some(&request_id()),
+        Some(request_id()),
         invalid_now.as_ref(),
         Some(&sender_private_keys)
     );
@@ -71,7 +71,7 @@ fn test_encrypted_continuation() {
     let invalid_id = ARID::new();
     let invalid_continuation_error = Continuation::try_from_envelope(
         &envelope,
-        Some(&invalid_id),
+        Some(invalid_id),
         valid_now.as_ref(),
         Some(&sender_private_keys)
     );

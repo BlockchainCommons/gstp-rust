@@ -46,7 +46,7 @@ impl<T> SealedEvent<T>
 {
     pub fn new(
         content: impl Into<T>,
-        id: impl AsRef<ARID>,
+        id: ARID,
         sender: impl AsRef<XIDDocument>
     ) -> Self {
         Self {
@@ -84,7 +84,7 @@ impl<T> EventBehavior<T>
         self.event.content()
     }
 
-    fn id(&self) -> &ARID {
+    fn id(&self) -> ARID {
         self.event.id()
     }
 
@@ -240,7 +240,7 @@ impl<T> SealedEvent<T>
 
     pub fn try_from_envelope(
         encrypted_envelope: &Envelope,
-        expected_id: Option<&ARID>,
+        expected_id: Option<ARID>,
         now: Option<&Date>,
         recipient_private_key: &PrivateKeys
     ) -> Result<Self> {

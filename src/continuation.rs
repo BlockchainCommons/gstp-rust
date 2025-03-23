@@ -30,12 +30,12 @@ impl Continuation {
         }
     }
 
-    pub fn with_valid_id(mut self, valid_id: impl AsRef<ARID>) -> Self {
-        self.valid_id = Some(valid_id.as_ref().clone());
+    pub fn with_valid_id(mut self, valid_id: ARID) -> Self {
+        self.valid_id = Some(valid_id);
         self
     }
 
-    pub fn with_optional_valid_id(self, valid_id: Option<impl AsRef<ARID>>) -> Self {
+    pub fn with_optional_valid_id(self, valid_id: Option<ARID>) -> Self {
         if let Some(valid_id) = valid_id {
             return self.with_valid_id(valid_id);
         }
@@ -67,8 +67,8 @@ impl Continuation {
         &self.state
     }
 
-    pub fn id(&self) -> Option<&ARID> {
-        self.valid_id.as_ref()
+    pub fn id(&self) -> Option<ARID> {
+        self.valid_id
     }
 
     pub fn valid_until(&self) -> Option<&Date> {
@@ -82,14 +82,14 @@ impl Continuation {
         }
     }
 
-    pub fn is_valid_id(&self, id: Option<&ARID>) -> bool {
+    pub fn is_valid_id(&self, id: Option<ARID>) -> bool {
         match id {
-            Some(expected_id) => self.valid_id.as_ref().is_none_or(|id| id == expected_id),
+            Some(expected_id) => self.valid_id.is_none_or(|id| id == expected_id),
             None => true,
         }
     }
 
-    pub fn is_valid(&self, now: Option<&Date>, id: Option<&ARID>) -> bool {
+    pub fn is_valid(&self, now: Option<&Date>, id: Option<ARID>) -> bool {
         self.is_valid_date(now) && self.is_valid_id(id)
     }
 }
@@ -98,7 +98,7 @@ impl Continuation {
     pub fn to_envelope(&self, recipient: Option<&dyn Encrypter>) -> Envelope {
         let mut result = self.state
             .wrap_envelope()
-            .add_optional_assertion(known_values::ID, self.valid_id.clone())
+            .add_optional_assertion(known_values::ID, self.valid_id)
             .add_optional_assertion(known_values::VALID_UNTIL, self.valid_until.clone());
 
         if let Some(sender) = recipient {
@@ -108,7 +108,7 @@ impl Continuation {
         result
     }
 
-    pub fn try_from_envelope(encrypted_envelope: &Envelope, id: Option<&ARID>, now: Option<&Date>, recipient: Option<&PrivateKeys>) -> Result<Self> {
+    pub fn try_from_envelope(encrypted_envelope: &Envelope, id: Option<ARID>, now: Option<&Date>, recipient: Option<&PrivateKeys>) -> Result<Self> {
         let envelope = if let Some(recipient) = recipient {
             encrypted_envelope.decrypt_to_recipient(recipient)?
         } else {

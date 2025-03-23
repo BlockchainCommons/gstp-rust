@@ -40,7 +40,7 @@ impl std::fmt::Display for SealedRequest {
 impl SealedRequest {
     pub fn new(
         function: impl Into<Function>,
-        id: impl AsRef<ARID>,
+        id: ARID,
         sender: impl AsRef<XIDDocument>
     ) -> Self {
         Self {
@@ -53,7 +53,7 @@ impl SealedRequest {
 
     pub fn new_with_body(
         body: Expression,
-        id: impl AsRef<ARID>,
+        id: ARID,
         sender: impl AsRef<XIDDocument>
     ) -> Self {
         Self {
@@ -135,7 +135,7 @@ impl RequestBehavior for SealedRequest {
         self.request.body()
     }
 
-    fn id(&self) -> &ARID {
+    fn id(&self) -> ARID {
         self.request.id()
     }
 
@@ -273,7 +273,7 @@ impl SealedRequest {
         Ok(result)
     }
 
-    pub fn try_from_envelope(encrypted_envelope: &Envelope, id: Option<&ARID>, now: Option<&Date>, recipient: &PrivateKeys) -> Result<Self> {
+    pub fn try_from_envelope(encrypted_envelope: &Envelope, id: Option<ARID>, now: Option<&Date>, recipient: &PrivateKeys) -> Result<Self> {
         let signed_envelope = encrypted_envelope.decrypt_to_recipient(recipient)?;
         let sender: XIDDocument = signed_envelope
             .unwrap_envelope()?
