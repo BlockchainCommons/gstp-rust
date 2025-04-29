@@ -1,4 +1,4 @@
-use anyhow::{ bail, Error, Result };
+use anyhow::{ bail, Result };
 use bc_components::{ PrivateKeys, ARID };
 use bc_xid::XIDDocument;
 use dcbor::{ prelude::*, Date };
@@ -101,12 +101,12 @@ impl ExpressionBehavior for SealedRequest {
     }
 
     fn extract_object_for_parameter<T>(&self, param: impl Into<Parameter>) -> Result<T>
-        where T: TryFrom<CBOR, Error = Error> + 'static
+        where T: TryFrom<CBOR, Error = dcbor::Error> + 'static
     {
         self.request.body().extract_object_for_parameter(param)
     }
 
-    fn extract_optional_object_for_parameter<T: TryFrom<CBOR, Error = Error> + 'static>(
+    fn extract_optional_object_for_parameter<T: TryFrom<CBOR, Error = dcbor::Error> + 'static>(
         &self,
         param: impl Into<Parameter>
     ) -> Result<Option<T>> {
@@ -114,7 +114,7 @@ impl ExpressionBehavior for SealedRequest {
     }
 
     fn extract_objects_for_parameter<T>(&self, param: impl Into<Parameter>) -> Result<Vec<T>>
-        where T: TryFrom<CBOR, Error = Error> + 'static
+        where T: TryFrom<CBOR, Error = dcbor::Error> + 'static
     {
         self.request.body().extract_objects_for_parameter(param)
     }

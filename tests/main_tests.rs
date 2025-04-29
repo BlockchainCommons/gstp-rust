@@ -1,5 +1,5 @@
 use gstp::prelude::*;
-use bc_components::{keypair, keypair_using, ARID};
+use bc_components::{ keypair, keypair_using, ARID };
 use bc_rand::make_fake_random_number_generator;
 use bc_xid::XIDDocument;
 use dcbor::Date;
@@ -27,8 +27,7 @@ fn request_continuation() -> Continuation {
 fn response_continuation() -> Continuation {
     let valid_duration = Duration::from_secs(60 * 60);
     let valid_until = request_date() + valid_duration;
-    Continuation::new("The state of things.")
-        .with_valid_until(valid_until)
+    Continuation::new("The state of things.").with_valid_until(valid_until)
 }
 
 #[test]
@@ -39,6 +38,7 @@ fn test_request_continuation() {
     let envelope = continuation.to_envelope(None);
 
     // println!("{}", envelope.format());
+    #[rustfmt::skip]
     assert_eq!(envelope.format(), indoc!{r#"
         {
             "The state of things."
@@ -48,7 +48,12 @@ fn test_request_continuation() {
         ]
     "#}.trim());
 
-    let parsed_continuation = Continuation::try_from_envelope(&envelope, Some(request_id()), None, None).unwrap();
+    let parsed_continuation = Continuation::try_from_envelope(
+        &envelope,
+        Some(request_id()),
+        None,
+        None
+    ).unwrap();
     assert_eq!(continuation.state(), parsed_continuation.state());
     assert_eq!(continuation.id(), parsed_continuation.id());
     assert_eq!(continuation.valid_until(), parsed_continuation.valid_until());
@@ -63,6 +68,7 @@ fn test_response_continuation() {
     let envelope = continuation.to_envelope(None);
 
     // println!("{}", envelope.format());
+    #[rustfmt::skip]
     assert_eq!(envelope.format(), indoc!{r#"
         {
             "The state of things."
@@ -87,6 +93,7 @@ fn test_encrypted_continuation() {
     let continuation = request_continuation();
     let envelope = continuation.to_envelope(Some(&sender_public_keys));
 
+    #[rustfmt::skip]
     assert_eq!(envelope.format(), indoc!{r#"
         ENCRYPTED [
             'hasRecipient': SealedMessage
@@ -94,18 +101,33 @@ fn test_encrypted_continuation() {
     "#}.trim());
 
     let valid_now = Some(request_date() + Duration::from_secs(30));
-    let parsed_continuation = Continuation::try_from_envelope(&envelope, Some(request_id()), valid_now.as_ref(), Some(&sender_private_keys)).unwrap();
+    let parsed_continuation = Continuation::try_from_envelope(
+        &envelope,
+        Some(request_id()),
+        valid_now.as_ref(),
+        Some(&sender_private_keys)
+    ).unwrap();
     assert_eq!(continuation.state(), parsed_continuation.state());
     assert_eq!(continuation.id(), parsed_continuation.id());
     assert_eq!(continuation.valid_until(), parsed_continuation.valid_until());
     assert_eq!(continuation, parsed_continuation);
 
     let invalid_now = Some(request_date() + Duration::from_secs(90));
-    let invalid_continuation_error = Continuation::try_from_envelope(&envelope, Some(request_id()), invalid_now.as_ref(), Some(&sender_private_keys));
+    let invalid_continuation_error = Continuation::try_from_envelope(
+        &envelope,
+        Some(request_id()),
+        invalid_now.as_ref(),
+        Some(&sender_private_keys)
+    );
     assert!(invalid_continuation_error.is_err());
 
     let invalid_id = ARID::new();
-    let invalid_continuation_error = Continuation::try_from_envelope(&envelope, Some(invalid_id), valid_now.as_ref(), Some(&sender_private_keys));
+    let invalid_continuation_error = Continuation::try_from_envelope(
+        &envelope,
+        Some(invalid_id),
+        valid_now.as_ref(),
+        Some(&sender_private_keys)
+    );
     assert!(invalid_continuation_error.is_err());
 }
 
@@ -119,10 +141,16 @@ fn test_sealed_request() {
 
     let mut rng = make_fake_random_number_generator();
     let (server_private_keys, server_public_keys) = keypair_using(&mut rng).unwrap();
-    let server = XIDDocument::new_with_keys(server_private_keys.clone(), server_public_keys.clone());
+    let server = XIDDocument::new_with_keys(
+        server_private_keys.clone(),
+        server_public_keys.clone()
+    );
 
     let (client_private_keys, client_public_keys) = keypair_using(&mut rng).unwrap();
-    let client = XIDDocument::new_with_keys(client_private_keys.clone(), client_public_keys.clone());
+    let client = XIDDocument::new_with_keys(
+        client_private_keys.clone(),
+        client_public_keys.clone()
+    );
 
     let now = Date::try_from("2024-07-04T11:11:11Z").unwrap();
 
@@ -170,12 +198,11 @@ fn test_sealed_request() {
     // would skip this and go straight to the next step.
     //
 
-    let signed_client_request_envelope = client_request.to_envelope(
-        Some(&client_continuation_valid_until),
-        Some(&client_private_keys),
-        None,
-    ).unwrap();
+    let signed_client_request_envelope = client_request
+        .to_envelope(Some(&client_continuation_valid_until), Some(&client_private_keys), None)
+        .unwrap();
     // println!("{}", signed_client_request_envelope.format());
+    #[rustfmt::skip]
     assert_eq!(signed_client_request_envelope.format(), (indoc! {r#"
         {
             request(ARID(c66be27d)) [
@@ -208,11 +235,13 @@ fn test_sealed_request() {
     // encrypted to the server.
     //
 
-    let sealed_client_request_envelope = client_request.to_envelope(
-        Some(&client_continuation_valid_until),
-        Some(&client_private_keys),
-        Some(&server),
-    ).unwrap();
+    let sealed_client_request_envelope = client_request
+        .to_envelope(
+            Some(&client_continuation_valid_until),
+            Some(&client_private_keys),
+            Some(&server)
+        )
+        .unwrap();
 
     //
     // The server receives and parses the envelope. No expected ID is
@@ -225,7 +254,7 @@ fn test_sealed_request() {
         &sealed_client_request_envelope,
         None,
         Some(&now),
-        &server_private_keys,
+        &server_private_keys
     ).unwrap();
     assert_eq!(*parsed_client_request.function(), Into::<Function>::into("test"));
     assert_eq!(parsed_client_request.extract_object_for_parameter::<i32>("param1").unwrap(), 42);
@@ -242,6 +271,7 @@ fn test_sealed_request() {
 
     let state = parsed_client_request.state().unwrap();
     // println!("{}", state.format());
+    #[rustfmt::skip]
     assert_eq!(state.format(), (indoc! {r#"
         «"nextPage"» [
             ❰"fromRecord"❱: 100
@@ -260,10 +290,7 @@ fn test_sealed_request() {
     // The state we're sending back to the client is whatever they sent us.
     let peer_continuation = parsed_client_request.peer_continuation();
 
-    let server_response = SealedResponse::new_success(
-        parsed_client_request.id(),
-        server
-    )
+    let server_response = SealedResponse::new_success(parsed_client_request.id(), server)
         .with_result("Records retrieved: 100-199")
         .with_state(state)
         .with_peer_continuation(peer_continuation);
@@ -275,12 +302,11 @@ fn test_sealed_request() {
     //
 
     let server_continuation_valid_until = now.clone() + Duration::from_secs(60);
-    let signed_server_response_envelope = server_response.to_envelope(
-        Some(&server_continuation_valid_until),
-        Some(&server_private_keys),
-        None,
-    ).unwrap();
+    let signed_server_response_envelope = server_response
+        .to_envelope(Some(&server_continuation_valid_until), Some(&server_private_keys), None)
+        .unwrap();
     // println!("{}", signed_server_response_envelope.format());
+    #[rustfmt::skip]
     assert_eq!(signed_server_response_envelope.format(), (indoc! {r#"
         {
             response(ARID(c66be27d)) [
@@ -307,11 +333,13 @@ fn test_sealed_request() {
     // to the client.
     //
 
-    let sealed_server_response_envelope = server_response.to_envelope(
-        Some(&server_continuation_valid_until),
-        Some(&server_private_keys),
-        Some(&client),
-    ).unwrap();
+    let sealed_server_response_envelope = server_response
+        .to_envelope(
+            Some(&server_continuation_valid_until),
+            Some(&server_private_keys),
+            Some(&client)
+        )
+        .unwrap();
 
     //
     // The server receives and parses the envelope. The ID of the original
@@ -324,10 +352,11 @@ fn test_sealed_request() {
         &sealed_server_response_envelope,
         Some(parsed_client_request.id()),
         Some(&now),
-        &client_private_keys,
+        &client_private_keys
     ).unwrap();
 
     // println!("{}", parsed_server_response.result().unwrap().format());
+    #[rustfmt::skip]
     assert_eq!(parsed_server_response.result().unwrap().format(), (indoc! {r#"
         "Records retrieved: 100-199"
     "#}).trim());
@@ -337,6 +366,7 @@ fn test_sealed_request() {
     //
 
     // println!("{}", parsed_server_response.state().unwrap().format());
+    #[rustfmt::skip]
     assert_eq!(parsed_server_response.state().unwrap().format(), (indoc! {r#"
         "The state of things."
     "#}).trim());
@@ -352,10 +382,16 @@ fn test_sealed_event() {
 
     let mut rng = make_fake_random_number_generator();
     let (sender_private_keys, sender_public_keys) = keypair_using(&mut rng).unwrap();
-    let sender = XIDDocument::new_with_keys(sender_private_keys.clone(), sender_public_keys.clone());
+    let sender = XIDDocument::new_with_keys(
+        sender_private_keys.clone(),
+        sender_public_keys.clone()
+    );
 
     let (recipient_private_keys, recipient_public_keys) = keypair_using(&mut rng).unwrap();
-    let recipient = XIDDocument::new_with_keys(recipient_private_keys.clone(), recipient_public_keys.clone());
+    let recipient = XIDDocument::new_with_keys(
+        recipient_private_keys.clone(),
+        recipient_public_keys.clone()
+    );
 
     let now = Date::try_from("2024-07-04T11:11:11Z").unwrap();
 
@@ -364,7 +400,8 @@ fn test_sealed_event() {
     // continuation as we're not expecting a response.
     //
 
-    let event = SealedEvent::<String>::new("test", request_id(), &sender)
+    let event = SealedEvent::<String>
+        ::new("test", request_id(), &sender)
         .with_note("This is a test")
         .with_date(now.clone());
 
@@ -374,11 +411,7 @@ fn test_sealed_event() {
     // broadcast event, this would be the final form of the envelope.
     //
 
-    let signed_event_envelope = event.to_envelope(
-        None,
-        Some(&sender_private_keys),
-        None,
-    ).unwrap();
+    let signed_event_envelope = event.to_envelope(None, Some(&sender_private_keys), None).unwrap();
 
     //
     // We're not using a continuation, or a valid until date, so the envelope
@@ -387,6 +420,7 @@ fn test_sealed_event() {
     //
 
     println!("{}", signed_event_envelope.format());
+    #[rustfmt::skip]
     assert_eq!(signed_event_envelope.format(), (indoc! {r#"
         {
             event(ARID(c66be27d)) [
@@ -409,11 +443,9 @@ fn test_sealed_event() {
     // encrypted to the recipient.
     //
 
-    let sealed_event_envelope = event.to_envelope(
-        None,
-        Some(&sender_private_keys),
-        Some(&recipient),
-    ).unwrap();
+    let sealed_event_envelope = event
+        .to_envelope(None, Some(&sender_private_keys), Some(&recipient))
+        .unwrap();
 
     //
     // The peer receives and parses the envelope.
@@ -422,12 +454,9 @@ fn test_sealed_event() {
     // let sender_inception_key = sender.inception_key().unwrap().signing_public_key();
     // println!("{:?}", sender_inception_key);
 
-    let parsed_event = SealedEvent::<String>::try_from_envelope(
-        &sealed_event_envelope,
-        None,
-        None,
-        &recipient_private_keys,
-    ).unwrap();
+    let parsed_event = SealedEvent::<String>
+        ::try_from_envelope(&sealed_event_envelope, None, None, &recipient_private_keys)
+        .unwrap();
     assert_eq!(parsed_event.content(), "test");
     assert_eq!(parsed_event.note(), "This is a test");
     assert_eq!(parsed_event.date(), Some(&now));

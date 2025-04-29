@@ -1,4 +1,4 @@
-use anyhow::{ bail, Error, Result };
+use anyhow::{ bail, Result };
 use bc_components::{ PrivateKeys, ARID };
 use bc_xid::XIDDocument;
 use dcbor::{ prelude::*, Date };
@@ -193,7 +193,7 @@ impl ResponseBehavior for SealedResponse {
         self.response.result()
     }
 
-    fn extract_result<T>(&self) -> Result<T> where T: TryFrom<CBOR, Error = Error> + 'static {
+    fn extract_result<T>(&self) -> Result<T> where T: TryFrom<CBOR, Error = dcbor::Error> + 'static {
         self.response.extract_result()
     }
 
@@ -201,7 +201,7 @@ impl ResponseBehavior for SealedResponse {
         self.response.error()
     }
 
-    fn extract_error<T>(&self) -> Result<T> where T: TryFrom<CBOR, Error = Error> + 'static {
+    fn extract_error<T>(&self) -> Result<T> where T: TryFrom<CBOR, Error = dcbor::Error> + 'static {
         self.response.extract_error()
     }
 }

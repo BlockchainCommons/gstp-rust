@@ -34,18 +34,12 @@ fn test_encrypted_continuation() {
     let continuation = request_continuation();
     let envelope = continuation.to_envelope(Some(&sender_public_keys));
 
-    assert_eq!(
-        envelope.format(),
-        (
-            indoc! {
-                r#"
+    #[rustfmt::skip]
+    assert_eq!(envelope.format(), (indoc! {r#"
         ENCRYPTED [
             'hasRecipient': SealedMessage(MLKEM512)
         ]
-    "#
-            }
-        ).trim()
-    );
+    "#}).trim());
 
     let valid_now = Some(request_date() + Duration::from_secs(30));
     let parsed_continuation = Continuation::try_from_envelope(
@@ -196,19 +190,13 @@ fn test_sealed_request() {
 
     let state = parsed_client_request.state().unwrap();
     // println!("{}", state.format());
-    assert_eq!(
-        state.format(),
-        (
-            indoc! {
-                r#"
+    #[rustfmt::skip]
+    assert_eq!(state.format(), (indoc! {r#"
         «"nextPage"» [
             ❰"fromRecord"❱: 100
             ❰"toRecord"❱: 199
         ]
-    "#
-            }
-        ).trim()
-    );
+    "#}).trim());
 
     //
     // Now the server constructs its successful response to the client.
@@ -266,32 +254,20 @@ fn test_sealed_request() {
     ).unwrap();
 
     // println!("{}", parsed_server_response.result().unwrap().format());
-    assert_eq!(
-        parsed_server_response.result().unwrap().format(),
-        (
-            indoc! {
-                r#"
+    #[rustfmt::skip]
+    assert_eq!(parsed_server_response.result().unwrap().format(), (indoc! {r#"
         "Records retrieved: 100-199"
-    "#
-            }
-        ).trim()
-    );
+    "#}).trim());
 
     //
     // The client can now use the continuation state and take the next action based on the result.
     //
 
     // println!("{}", parsed_server_response.state().unwrap().format());
-    assert_eq!(
-        parsed_server_response.state().unwrap().format(),
-        (
-            indoc! {
-                r#"
+    #[rustfmt::skip]
+    assert_eq!(parsed_server_response.state().unwrap().format(), (indoc! {r#"
         "The state of things."
-    "#
-            }
-        ).trim()
-    );
+    "#}).trim());
 }
 
 #[test]
