@@ -1,6 +1,6 @@
 [package]
 name = "gstp"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2024"
 description = "A secure, authenticated, transport-agnostic data exchange protocol with distributed state management via Encrypted State Continuations (ESC)."
 authors = ["Blockchain Commons"]
@@ -12,11 +12,11 @@ keywords = ["cryptography"]                                                     
 categories = ["cryptography"]                                                                                                                                 # https://crates.io/category_slugs
 
 [dependencies]
-dcbor = { version = "^0.18.0", features = ["multithreaded"] }
+dcbor = { version = "^0.19.0", features = ["multithreaded"] }
 bc-rand = "^0.4.0"
-bc-components = "^0.20.0"
-bc-envelope = "^0.27.0"
-bc-xid = "^0.7.0"
+bc-components = "^0.21.0"
+bc-envelope = "^0.28.0"
+bc-xid = "^0.8.0"
 
 anyhow = "^1.0.0"
 

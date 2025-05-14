@@ -14,7 +14,7 @@ Gordian Sealed Transaction Protocol (GSTP) is a secure, transport-agnostic commu
 
 ```toml
 [dependencies]
-gstp = "0.7.0"
+gstp = "0.8.0"
 ```
 
 ## Specification
