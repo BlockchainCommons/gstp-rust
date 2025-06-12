@@ -2,7 +2,7 @@ use anyhow::{Result, bail};
 use bc_components::{ARID, PrivateKeys};
 use bc_envelope::{Signer, prelude::*};
 use bc_xid::XIDDocument;
-use dcbor::{Date, prelude::*};
+use dcbor::Date;
 
 use super::Continuation;
 
