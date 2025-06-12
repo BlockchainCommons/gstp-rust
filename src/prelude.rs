@@ -1,9 +1,4 @@
 pub use crate::{
-    Continuation,
-    SealedRequest,
-    SealedRequestBehavior,
-    SealedResponse,
-    SealedResponseBehavior,
-    SealedEvent,
-    SealedEventBehavior,
+    Continuation, SealedEvent, SealedEventBehavior, SealedRequest,
+    SealedRequestBehavior, SealedResponse, SealedResponseBehavior,
 };

@@ -1,8 +1,8 @@
-use anyhow::{ bail, Result };
-use bc_components::{ PrivateKeys, ARID };
+use anyhow::{Result, bail};
+use bc_components::{ARID, PrivateKeys};
+use bc_envelope::{Signer, prelude::*};
 use bc_xid::XIDDocument;
-use dcbor::{ prelude::*, Date };
-use bc_envelope::{prelude::*, Signer};
+use dcbor::{Date, prelude::*};
 
 use super::Continuation;
 
@@ -10,9 +10,11 @@ use super::Continuation;
 pub struct SealedResponse {
     response: Response,
     sender: XIDDocument,
-    // This is the continuation we're going to self-encrypt and send to the peer.
+    // This is the continuation we're going to self-encrypt and send to the
+    // peer.
     state: Option<Envelope>,
-    // This is a continuation we previously received from the peer and want to send back to them.
+    // This is a continuation we previously received from the peer and want to
+    // send back to them.
     peer_continuation: Option<Envelope>,
 }
 
@@ -22,11 +24,12 @@ impl std::fmt::Display for SealedResponse {
             f,
             "SealedResponse({}, state: {}, peer_continuation: {})",
             self.response.summary(),
-            self.state.as_ref().map_or("None".to_string(), |state| state.format_flat()),
-            self.peer_continuation.clone().map_or_else(
-                || "None".to_string(),
-                |_| "Some".to_string()
-            )
+            self.state
+                .as_ref()
+                .map_or("None".to_string(), |state| state.format_flat()),
+            self.peer_continuation
+                .clone()
+                .map_or_else(|| "None".to_string(), |_| "Some".to_string())
         )
     }
 }
@@ -78,10 +81,15 @@ pub trait SealedResponseBehavior: ResponseBehavior {
     /// Adds state to the request that the peer may return at some future time.
     fn with_state(self, state: impl EnvelopeEncodable) -> Self;
 
-    fn with_optional_state(self, state: Option<impl EnvelopeEncodable>) -> Self;
+    fn with_optional_state(self, state: Option<impl EnvelopeEncodable>)
+    -> Self;
 
-    /// Adds a continuation we previously received from the recipient and want to send back to them.
-    fn with_peer_continuation(self, peer_continuation: Option<&Envelope>) -> Self;
+    /// Adds a continuation we previously received from the recipient and want
+    /// to send back to them.
+    fn with_peer_continuation(
+        self,
+        peer_continuation: Option<&Envelope>,
+    ) -> Self;
 
     //
     // Parsing
@@ -109,7 +117,10 @@ impl SealedResponseBehavior for SealedResponse {
         self
     }
 
-    fn with_optional_state(mut self, state: Option<impl EnvelopeEncodable>) -> Self {
+    fn with_optional_state(
+        mut self,
+        state: Option<impl EnvelopeEncodable>,
+    ) -> Self {
         if let Some(state) = state {
             self.with_state(state)
         } else {
@@ -118,8 +129,12 @@ impl SealedResponseBehavior for SealedResponse {
         }
     }
 
-    /// Adds a continuation we previously received from the recipient and want to send back to them.
-    fn with_peer_continuation(mut self, peer_continuation: Option<&Envelope>) -> Self {
+    /// Adds a continuation we previously received from the recipient and want
+    /// to send back to them.
+    fn with_peer_continuation(
+        mut self,
+        peer_continuation: Option<&Envelope>,
+    ) -> Self {
         self.peer_continuation = peer_continuation.cloned();
         self
     }
@@ -128,13 +143,9 @@ impl SealedResponseBehavior for SealedResponse {
     // Parsing
     //
 
-    fn sender(&self) -> &XIDDocument {
-        self.sender.as_ref()
-    }
+    fn sender(&self) -> &XIDDocument { self.sender.as_ref() }
 
-    fn state(&self) -> Option<&Envelope> {
-        self.state.as_ref()
-    }
+    fn state(&self) -> Option<&Envelope> { self.state.as_ref() }
 
     fn peer_continuation(&self) -> Option<&Envelope> {
         self.peer_continuation.as_ref()
@@ -147,61 +158,60 @@ impl ResponseBehavior for SealedResponse {
         self
     }
 
-    /// If the result is `None`, the value of the response will be the null envelope.
-    fn with_optional_result(mut self, result: Option<impl EnvelopeEncodable>) -> Self {
+    /// If the result is `None`, the value of the response will be the null
+    /// envelope.
+    fn with_optional_result(
+        mut self,
+        result: Option<impl EnvelopeEncodable>,
+    ) -> Self {
         self.response = self.response.with_optional_result(result);
         self
     }
 
-    /// If no error is provided, the value of the response will be the unknown value.
+    /// If no error is provided, the value of the response will be the unknown
+    /// value.
     fn with_error(mut self, error: impl EnvelopeEncodable) -> Self {
         self.response = self.response.with_error(error);
         self
     }
 
-    /// If the error is `None`, the value of the response will be the unknown value.
-    fn with_optional_error(mut self, error: Option<impl EnvelopeEncodable>) -> Self {
+    /// If the error is `None`, the value of the response will be the unknown
+    /// value.
+    fn with_optional_error(
+        mut self,
+        error: Option<impl EnvelopeEncodable>,
+    ) -> Self {
         self.response = self.response.with_optional_error(error);
         self
     }
 
-    fn is_ok(&self) -> bool {
-        self.response.is_ok()
-    }
+    fn is_ok(&self) -> bool { self.response.is_ok() }
 
-    fn is_err(&self) -> bool {
-        self.response.is_err()
-    }
+    fn is_err(&self) -> bool { self.response.is_err() }
 
-    fn ok(&self) -> Option<&(ARID, Envelope)> {
-        self.response.ok()
-    }
+    fn ok(&self) -> Option<&(ARID, Envelope)> { self.response.ok() }
 
-    fn err(&self) -> Option<&(Option<ARID>, Envelope)> {
-        self.response.err()
-    }
+    fn err(&self) -> Option<&(Option<ARID>, Envelope)> { self.response.err() }
 
-    fn id(&self) -> Option<ARID> {
-        self.response.id()
-    }
+    fn id(&self) -> Option<ARID> { self.response.id() }
 
-    fn expect_id(&self) -> ARID {
-        self.response.expect_id()
-    }
+    fn expect_id(&self) -> ARID { self.response.expect_id() }
 
-    fn result(&self) -> Result<&Envelope> {
-        self.response.result()
-    }
+    fn result(&self) -> Result<&Envelope> { self.response.result() }
 
-    fn extract_result<T>(&self) -> Result<T> where T: TryFrom<CBOR, Error = dcbor::Error> + 'static {
+    fn extract_result<T>(&self) -> Result<T>
+    where
+        T: TryFrom<CBOR, Error = dcbor::Error> + 'static,
+    {
         self.response.extract_result()
     }
 
-    fn error(&self) -> Result<&Envelope> {
-        self.response.error()
-    }
+    fn error(&self) -> Result<&Envelope> { self.response.error() }
 
-    fn extract_error<T>(&self) -> Result<T> where T: TryFrom<CBOR, Error = dcbor::Error> + 'static {
+    fn extract_error<T>(&self) -> Result<T>
+    where
+        T: TryFrom<CBOR, Error = dcbor::Error> + 'static,
+    {
         self.response.extract_error()
     }
 }
@@ -211,26 +221,34 @@ impl SealedResponse {
         &self,
         valid_until: Option<&Date>,
         sender: Option<&dyn Signer>,
-        recipient: Option<&XIDDocument>
+        recipient: Option<&XIDDocument>,
     ) -> Result<Envelope> {
         let sender_continuation: Option<Envelope>;
         if let Some(state) = &self.state {
-            let continuation = Continuation::new(state).with_optional_valid_until(valid_until);
-            let sender_encryption_key = self.sender.encryption_key()
-                .ok_or_else(|| anyhow::anyhow!("Sender must have an encryption key"))?;
-            sender_continuation = Some(continuation.to_envelope(Some(sender_encryption_key)));
+            let continuation =
+                Continuation::new(state).with_optional_valid_until(valid_until);
+            let sender_encryption_key =
+                self.sender.encryption_key().ok_or_else(|| {
+                    anyhow::anyhow!("Sender must have an encryption key")
+                })?;
+            sender_continuation =
+                Some(continuation.to_envelope(Some(sender_encryption_key)));
         } else {
             sender_continuation = None;
         }
 
-        let mut result = self.response
+        let mut result = self
+            .response
             .clone()
             .into_envelope()
             .add_assertion(known_values::SENDER, self.sender.to_envelope())
-            .add_optional_assertion(known_values::SENDER_CONTINUATION, sender_continuation)
+            .add_optional_assertion(
+                known_values::SENDER_CONTINUATION,
+                sender_continuation,
+            )
             .add_optional_assertion(
                 known_values::RECIPIENT_CONTINUATION,
-                self.peer_continuation.clone()
+                self.peer_continuation.clone(),
             );
 
         if let Some(sender_private_key) = sender {
@@ -238,8 +256,10 @@ impl SealedResponse {
         }
 
         if let Some(recipient) = recipient {
-            let recipient_encryption_key = recipient.encryption_key()
-                .ok_or_else(|| anyhow::anyhow!("Recipient must have an encryption key"))?;
+            let recipient_encryption_key =
+                recipient.encryption_key().ok_or_else(|| {
+                    anyhow::anyhow!("Recipient must have an encryption key")
+                })?;
             result = result.encrypt_to_recipient(recipient_encryption_key);
         }
 
@@ -250,27 +270,31 @@ impl SealedResponse {
         encrypted_envelope: &Envelope,
         expected_id: Option<ARID>,
         now: Option<&Date>,
-        recipient_private_key: &PrivateKeys
+        recipient_private_key: &PrivateKeys,
     ) -> Result<Self> {
-        let signed_envelope = encrypted_envelope.decrypt_to_recipient(recipient_private_key)?;
+        let signed_envelope =
+            encrypted_envelope.decrypt_to_recipient(recipient_private_key)?;
         let sender: XIDDocument = signed_envelope
             .unwrap_envelope()?
             .object_for_predicate(known_values::SENDER)?
             .try_into()?;
-        let sender_verification_key = sender.verification_key()
-            .ok_or_else(|| anyhow::anyhow!("Sender must have a verification key"))?;
-        let response_envelope = signed_envelope.verify(sender_verification_key)?;
-        let peer_continuation = response_envelope.optional_object_for_predicate(
-            known_values::SENDER_CONTINUATION
-        )?;
+        let sender_verification_key =
+            sender.verification_key().ok_or_else(|| {
+                anyhow::anyhow!("Sender must have a verification key")
+            })?;
+        let response_envelope =
+            signed_envelope.verify(sender_verification_key)?;
+        let peer_continuation = response_envelope
+            .optional_object_for_predicate(known_values::SENDER_CONTINUATION)?;
         if let Some(some_peer_continuation) = peer_continuation.clone() {
             if !some_peer_continuation.subject().is_encrypted() {
                 bail!("Peer continuation must be encrypted");
             }
         }
-        let encrypted_continuation = response_envelope.optional_object_for_predicate(
-            known_values::RECIPIENT_CONTINUATION
-        )?;
+        let encrypted_continuation = response_envelope
+            .optional_object_for_predicate(
+                known_values::RECIPIENT_CONTINUATION,
+            )?;
         let state: Option<Envelope>;
         if let Some(encrypted_continuation) = encrypted_continuation {
             let continuation = Continuation::try_from_envelope(
@@ -288,11 +312,6 @@ impl SealedResponse {
             state = None;
         }
         let response = Response::try_from(response_envelope)?;
-        Ok(Self {
-            response,
-            sender,
-            state,
-            peer_continuation,
-        })
+        Ok(Self { response, sender, state, peer_continuation })
     }
 }
