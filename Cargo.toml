@@ -15,8 +15,8 @@ categories = ["cryptography"]                                                   
 dcbor = { version = "^0.21.0", features = ["multithreaded"] }
 bc-rand = "^0.4.0"
 bc-components = "^0.23.0"
-bc-envelope = "^0.30.0"
-bc-xid = "^0.10.0"
+bc-envelope = "^0.32.0"
+bc-xid = "^0.11.0"
 
 anyhow = "^1.0.0"
 

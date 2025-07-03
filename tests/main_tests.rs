@@ -4,7 +4,6 @@ use bc_components::{ARID, keypair, keypair_using};
 use bc_envelope::prelude::*;
 use bc_rand::make_fake_random_number_generator;
 use bc_xid::XIDDocument;
-use dcbor::Date;
 use gstp::prelude::*;
 use hex_literal::hex;
 use indoc::indoc;

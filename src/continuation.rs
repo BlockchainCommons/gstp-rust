@@ -1,7 +1,6 @@
 use anyhow::{Result, bail};
 use bc_components::{ARID, Encrypter, PrivateKeys};
 use bc_envelope::prelude::*;
-use dcbor::Date;
 
 #[derive(Clone, Debug)]
 pub struct Continuation {
@@ -99,7 +98,7 @@ impl Continuation {
     pub fn to_envelope(&self, recipient: Option<&dyn Encrypter>) -> Envelope {
         let mut result = self
             .state
-            .wrap_envelope()
+            .wrap()
             .add_optional_assertion(known_values::ID, self.valid_id)
             .add_optional_assertion(
                 known_values::VALID_UNTIL,
@@ -125,7 +124,7 @@ impl Continuation {
             encrypted_envelope.clone()
         };
         let continuation = Self {
-            state: envelope.unwrap_envelope()?,
+            state: envelope.try_unwrap()?,
             valid_id: envelope
                 .extract_optional_object_for_predicate(known_values::ID)?,
             valid_until: envelope.extract_optional_object_for_predicate(

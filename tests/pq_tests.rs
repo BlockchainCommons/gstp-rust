@@ -3,7 +3,6 @@ use std::time::Duration;
 use bc_components::{ARID, EncapsulationScheme, SignatureScheme, keypair_opt};
 use bc_envelope::prelude::*;
 use bc_xid::XIDDocument;
-use dcbor::Date;
 use gstp::prelude::*;
 use hex_literal::hex;
 use indoc::indoc;

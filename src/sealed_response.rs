@@ -2,7 +2,6 @@ use anyhow::{Result, bail};
 use bc_components::{ARID, PrivateKeys};
 use bc_envelope::{Signer, prelude::*};
 use bc_xid::XIDDocument;
-use dcbor::Date;
 
 use super::Continuation;
 
@@ -275,7 +274,7 @@ impl SealedResponse {
         let signed_envelope =
             encrypted_envelope.decrypt_to_recipient(recipient_private_key)?;
         let sender: XIDDocument = signed_envelope
-            .unwrap_envelope()?
+            .try_unwrap()?
             .object_for_predicate(known_values::SENDER)?
             .try_into()?;
         let sender_verification_key =
