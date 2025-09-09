@@ -1,9 +1,7 @@
-use anyhow::{Result, bail};
+use crate::{Error, Result, Continuation};
 use bc_components::{ARID, PrivateKeys};
 use bc_envelope::{Signer, prelude::*};
 use bc_xid::XIDDocument;
-
-use super::Continuation;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SealedRequest {
@@ -93,7 +91,7 @@ impl ExpressionBehavior for SealedRequest {
     fn object_for_parameter(
         &self,
         param: impl Into<Parameter>,
-    ) -> Result<Envelope> {
+    ) -> bc_envelope::Result<Envelope> {
         self.request.body().object_for_parameter(param)
     }
 
@@ -107,7 +105,7 @@ impl ExpressionBehavior for SealedRequest {
     fn extract_object_for_parameter<T>(
         &self,
         param: impl Into<Parameter>,
-    ) -> Result<T>
+    ) -> bc_envelope::Result<T>
     where
         T: TryFrom<CBOR, Error = dcbor::Error> + 'static,
     {
@@ -119,7 +117,7 @@ impl ExpressionBehavior for SealedRequest {
     >(
         &self,
         param: impl Into<Parameter>,
-    ) -> Result<Option<T>> {
+    ) -> bc_envelope::Result<Option<T>> {
         self.request
             .body()
             .extract_optional_object_for_parameter(param)
@@ -128,7 +126,7 @@ impl ExpressionBehavior for SealedRequest {
     fn extract_objects_for_parameter<T>(
         &self,
         param: impl Into<Parameter>,
-    ) -> Result<Vec<T>>
+    ) -> bc_envelope::Result<Vec<T>>
     where
         T: TryFrom<CBOR, Error = dcbor::Error> + 'static,
     {
@@ -260,9 +258,7 @@ impl SealedRequest {
             .with_valid_id(self.id())
             .with_optional_valid_until(valid_until);
         let sender_encryption_key =
-            self.sender.encryption_key().ok_or_else(|| {
-                anyhow::anyhow!("Sender must have an encryption key")
-            })?;
+            self.sender.encryption_key().ok_or(Error::SenderMissingEncryptionKey)?;
         let sender_continuation =
             continuation.to_envelope(Some(sender_encryption_key));
 
@@ -286,9 +282,7 @@ impl SealedRequest {
 
         if let Some(recipient) = recipient {
             let recipient_encryption_key =
-                recipient.encryption_key().ok_or_else(|| {
-                    anyhow::anyhow!("Recipient must have an encryption key")
-                })?;
+                recipient.encryption_key().ok_or(Error::RecipientMissingEncryptionKey)?;
 
             result = result.encrypt_to_recipient(recipient_encryption_key);
         }
@@ -309,19 +303,17 @@ impl SealedRequest {
             .object_for_predicate(known_values::SENDER)?
             .try_into()?;
         let sender_verification_key =
-            sender.verification_key().ok_or_else(|| {
-                anyhow::anyhow!("Sender must have a verification key")
-            })?;
+            sender.verification_key().ok_or(Error::SenderMissingVerificationKey)?;
         let request_envelope =
             signed_envelope.verify(sender_verification_key)?;
         let peer_continuation = request_envelope
             .optional_object_for_predicate(known_values::SENDER_CONTINUATION)?;
         if let Some(some_peer_continuation) = peer_continuation.clone() {
             if !some_peer_continuation.subject().is_encrypted() {
-                bail!("Peer continuation must be encrypted");
+                return Err(Error::PeerContinuationNotEncrypted);
             }
         } else {
-            bail!("Requests must contain a peer continuation");
+            return Err(Error::MissingPeerContinuation);
         }
         let encrypted_continuation = request_envelope
             .optional_object_for_predicate(

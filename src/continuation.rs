@@ -1,4 +1,4 @@
-use anyhow::{Result, bail};
+use crate::{Error, Result};
 use bc_components::{ARID, Encrypter, PrivateKeys};
 use bc_envelope::prelude::*;
 
@@ -65,11 +65,17 @@ impl Continuation {
 // Parsing
 //
 impl Continuation {
-    pub fn state(&self) -> &Envelope { &self.state }
+    pub fn state(&self) -> &Envelope {
+        &self.state
+    }
 
-    pub fn id(&self) -> Option<ARID> { self.valid_id }
+    pub fn id(&self) -> Option<ARID> {
+        self.valid_id
+    }
 
-    pub fn valid_until(&self) -> Option<&Date> { self.valid_until.as_ref() }
+    pub fn valid_until(&self) -> Option<&Date> {
+        self.valid_until.as_ref()
+    }
 
     pub fn is_valid_date(&self, now: Option<&Date>) -> bool {
         match now {
@@ -132,10 +138,10 @@ impl Continuation {
             )?,
         };
         if !continuation.is_valid_date(now) {
-            bail!("Continuation expired");
+            return Err(Error::ContinuationExpired);
         }
         if !continuation.is_valid_id(id) {
-            bail!("Continuation ID invalid");
+            return Err(Error::ContinuationIdInvalid);
         }
         Ok(continuation)
     }

@@ -1,9 +1,7 @@
-use anyhow::{Result, bail};
+use crate::{Error, Result, Continuation};
 use bc_components::{ARID, PrivateKeys};
 use bc_envelope::{Signer, prelude::*};
 use bc_xid::XIDDocument;
-
-use super::Continuation;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SealedResponse {
@@ -196,18 +194,18 @@ impl ResponseBehavior for SealedResponse {
 
     fn expect_id(&self) -> ARID { self.response.expect_id() }
 
-    fn result(&self) -> Result<&Envelope> { self.response.result() }
+    fn result(&self) -> bc_envelope::Result<&Envelope> { self.response.result() }
 
-    fn extract_result<T>(&self) -> Result<T>
+    fn extract_result<T>(&self) -> bc_envelope::Result<T>
     where
         T: TryFrom<CBOR, Error = dcbor::Error> + 'static,
     {
         self.response.extract_result()
     }
 
-    fn error(&self) -> Result<&Envelope> { self.response.error() }
+    fn error(&self) -> bc_envelope::Result<&Envelope> { self.response.error() }
 
-    fn extract_error<T>(&self) -> Result<T>
+    fn extract_error<T>(&self) -> bc_envelope::Result<T>
     where
         T: TryFrom<CBOR, Error = dcbor::Error> + 'static,
     {
@@ -227,9 +225,7 @@ impl SealedResponse {
             let continuation =
                 Continuation::new(state).with_optional_valid_until(valid_until);
             let sender_encryption_key =
-                self.sender.encryption_key().ok_or_else(|| {
-                    anyhow::anyhow!("Sender must have an encryption key")
-                })?;
+                self.sender.encryption_key().ok_or(Error::SenderMissingEncryptionKey)?;
             sender_continuation =
                 Some(continuation.to_envelope(Some(sender_encryption_key)));
         } else {
@@ -256,9 +252,7 @@ impl SealedResponse {
 
         if let Some(recipient) = recipient {
             let recipient_encryption_key =
-                recipient.encryption_key().ok_or_else(|| {
-                    anyhow::anyhow!("Recipient must have an encryption key")
-                })?;
+                recipient.encryption_key().ok_or(Error::RecipientMissingEncryptionKey)?;
             result = result.encrypt_to_recipient(recipient_encryption_key);
         }
 
@@ -278,16 +272,14 @@ impl SealedResponse {
             .object_for_predicate(known_values::SENDER)?
             .try_into()?;
         let sender_verification_key =
-            sender.verification_key().ok_or_else(|| {
-                anyhow::anyhow!("Sender must have a verification key")
-            })?;
+            sender.verification_key().ok_or(Error::SenderMissingVerificationKey)?;
         let response_envelope =
             signed_envelope.verify(sender_verification_key)?;
         let peer_continuation = response_envelope
             .optional_object_for_predicate(known_values::SENDER_CONTINUATION)?;
         if let Some(some_peer_continuation) = peer_continuation.clone() {
             if !some_peer_continuation.subject().is_encrypted() {
-                bail!("Peer continuation must be encrypted");
+                return Err(Error::PeerContinuationNotEncrypted);
             }
         }
         let encrypted_continuation = response_envelope
