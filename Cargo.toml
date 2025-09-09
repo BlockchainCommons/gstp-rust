@@ -18,7 +18,7 @@ bc-components = "^0.24.0"
 bc-envelope = "^0.33.0"
 bc-xid = "^0.12.0"
 
-anyhow = "^1.0.0"
+thiserror = "^2.0"
 
 [dev-dependencies]
 hex-literal = "^0.4.1"

@@ -28,6 +28,8 @@
 //! See the unit tests in the source code for examples of how to use this
 //! library.
 
+mod error;
+pub use error::{Error, Result};
 mod continuation;
 pub use continuation::Continuation;
 mod sealed_request;
