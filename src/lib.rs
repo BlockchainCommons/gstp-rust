@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/gstp/0.9.0")]
+#![doc(html_root_url = "https://docs.rs/gstp/0.10.0")]
 #![warn(rust_2018_idioms)]
 
 //! # Introduction
@@ -20,7 +20,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! gstp = "0.9.0"
+//! gstp = "0.10.0"
 //! ```
 //!
 //! # Examples
