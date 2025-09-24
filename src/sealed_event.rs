@@ -1,7 +1,8 @@
-use crate::{Error, Result, Continuation};
 use bc_components::{ARID, PrivateKeys};
 use bc_envelope::{Signer, prelude::*};
 use bc_xid::XIDDocument;
+
+use crate::{Continuation, Error, Result};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SealedEvent<T>
@@ -229,8 +230,10 @@ where
         sender: Option<&dyn Signer>,
         recipient: Option<&XIDDocument>,
     ) -> Result<Envelope> {
-        let sender_encryption_key =
-            self.sender.encryption_key().ok_or(Error::SenderMissingEncryptionKey)?;
+        let sender_encryption_key = self
+            .sender
+            .encryption_key()
+            .ok_or(Error::SenderMissingEncryptionKey)?;
         let sender_continuation: Option<Envelope> =
             if let Some(state) = &self.state {
                 Some(
@@ -265,8 +268,9 @@ where
         }
 
         if let Some(recipient) = recipient {
-            let recipient_encryption_key =
-                recipient.encryption_key().ok_or(Error::RecipientMissingEncryptionKey)?;
+            let recipient_encryption_key = recipient
+                .encryption_key()
+                .ok_or(Error::RecipientMissingEncryptionKey)?;
             result = result.encrypt_to_recipient(recipient_encryption_key);
         }
 
@@ -285,8 +289,9 @@ where
             .try_unwrap()?
             .object_for_predicate(known_values::SENDER)?
             .try_into()?;
-        let sender_verification_key =
-            sender.verification_key().ok_or(Error::SenderMissingVerificationKey)?;
+        let sender_verification_key = sender
+            .verification_key()
+            .ok_or(Error::SenderMissingVerificationKey)?;
         let event_envelope = signed_envelope.verify(sender_verification_key)?;
         let peer_continuation = event_envelope
             .optional_object_for_predicate(known_values::SENDER_CONTINUATION)?;

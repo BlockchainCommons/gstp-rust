@@ -1,7 +1,8 @@
-use crate::{Error, Result, Continuation};
 use bc_components::{ARID, PrivateKeys};
 use bc_envelope::{Signer, prelude::*};
 use bc_xid::XIDDocument;
+
+use crate::{Continuation, Error, Result};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SealedResponse {
@@ -194,7 +195,9 @@ impl ResponseBehavior for SealedResponse {
 
     fn expect_id(&self) -> ARID { self.response.expect_id() }
 
-    fn result(&self) -> bc_envelope::Result<&Envelope> { self.response.result() }
+    fn result(&self) -> bc_envelope::Result<&Envelope> {
+        self.response.result()
+    }
 
     fn extract_result<T>(&self) -> bc_envelope::Result<T>
     where
@@ -224,8 +227,10 @@ impl SealedResponse {
         if let Some(state) = &self.state {
             let continuation =
                 Continuation::new(state).with_optional_valid_until(valid_until);
-            let sender_encryption_key =
-                self.sender.encryption_key().ok_or(Error::SenderMissingEncryptionKey)?;
+            let sender_encryption_key = self
+                .sender
+                .encryption_key()
+                .ok_or(Error::SenderMissingEncryptionKey)?;
             sender_continuation =
                 Some(continuation.to_envelope(Some(sender_encryption_key)));
         } else {
@@ -251,8 +256,9 @@ impl SealedResponse {
         }
 
         if let Some(recipient) = recipient {
-            let recipient_encryption_key =
-                recipient.encryption_key().ok_or(Error::RecipientMissingEncryptionKey)?;
+            let recipient_encryption_key = recipient
+                .encryption_key()
+                .ok_or(Error::RecipientMissingEncryptionKey)?;
             result = result.encrypt_to_recipient(recipient_encryption_key);
         }
 
@@ -271,8 +277,9 @@ impl SealedResponse {
             .try_unwrap()?
             .object_for_predicate(known_values::SENDER)?
             .try_into()?;
-        let sender_verification_key =
-            sender.verification_key().ok_or(Error::SenderMissingVerificationKey)?;
+        let sender_verification_key = sender
+            .verification_key()
+            .ok_or(Error::SenderMissingVerificationKey)?;
         let response_envelope =
             signed_envelope.verify(sender_verification_key)?;
         let peer_continuation = response_envelope

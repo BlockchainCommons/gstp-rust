@@ -1,7 +1,8 @@
-use crate::{Error, Result, Continuation};
 use bc_components::{ARID, PrivateKeys};
 use bc_envelope::{Signer, prelude::*};
 use bc_xid::XIDDocument;
+
+use crate::{Continuation, Error, Result};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SealedRequest {
@@ -257,8 +258,10 @@ impl SealedRequest {
         let continuation = Continuation::new(state)
             .with_valid_id(self.id())
             .with_optional_valid_until(valid_until);
-        let sender_encryption_key =
-            self.sender.encryption_key().ok_or(Error::SenderMissingEncryptionKey)?;
+        let sender_encryption_key = self
+            .sender
+            .encryption_key()
+            .ok_or(Error::SenderMissingEncryptionKey)?;
         let sender_continuation =
             continuation.to_envelope(Some(sender_encryption_key));
 
@@ -281,8 +284,9 @@ impl SealedRequest {
         }
 
         if let Some(recipient) = recipient {
-            let recipient_encryption_key =
-                recipient.encryption_key().ok_or(Error::RecipientMissingEncryptionKey)?;
+            let recipient_encryption_key = recipient
+                .encryption_key()
+                .ok_or(Error::RecipientMissingEncryptionKey)?;
 
             result = result.encrypt_to_recipient(recipient_encryption_key);
         }
@@ -302,8 +306,9 @@ impl SealedRequest {
             .try_unwrap()?
             .object_for_predicate(known_values::SENDER)?
             .try_into()?;
-        let sender_verification_key =
-            sender.verification_key().ok_or(Error::SenderMissingVerificationKey)?;
+        let sender_verification_key = sender
+            .verification_key()
+            .ok_or(Error::SenderMissingVerificationKey)?;
         let request_envelope =
             signed_envelope.verify(sender_verification_key)?;
         let peer_continuation = request_envelope

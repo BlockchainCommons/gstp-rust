@@ -1,6 +1,7 @@
-use crate::{Error, Result};
 use bc_components::{ARID, Encrypter, PrivateKeys};
 use bc_envelope::prelude::*;
+
+use crate::{Error, Result};
 
 #[derive(Clone, Debug)]
 pub struct Continuation {
@@ -65,17 +66,11 @@ impl Continuation {
 // Parsing
 //
 impl Continuation {
-    pub fn state(&self) -> &Envelope {
-        &self.state
-    }
+    pub fn state(&self) -> &Envelope { &self.state }
 
-    pub fn id(&self) -> Option<ARID> {
-        self.valid_id
-    }
+    pub fn id(&self) -> Option<ARID> { self.valid_id }
 
-    pub fn valid_until(&self) -> Option<&Date> {
-        self.valid_until.as_ref()
-    }
+    pub fn valid_until(&self) -> Option<&Date> { self.valid_until.as_ref() }
 
     pub fn is_valid_date(&self, now: Option<&Date>) -> bool {
         match now {
