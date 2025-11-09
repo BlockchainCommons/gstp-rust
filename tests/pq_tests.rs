@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use bc_components::{ARID, EncapsulationScheme, SignatureScheme, keypair_opt};
 use bc_envelope::prelude::*;
-use bc_xid::XIDDocument;
+use bc_xid::{XIDGenesisMarkOptions, XIDInceptionKeyOptions, XIDDocument};
 use gstp::prelude::*;
 use hex_literal::hex;
 use indoc::indoc;
@@ -12,7 +12,9 @@ fn request_id() -> ARID {
         "c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc"
     ))
 }
-fn request_date() -> Date { Date::try_from("2024-07-04T11:11:11Z").unwrap() }
+fn request_date() -> Date {
+    Date::try_from("2024-07-04T11:11:11Z").unwrap()
+}
 
 fn request_continuation() -> Continuation {
     let valid_duration = Duration::from_secs(60);
@@ -84,16 +86,22 @@ fn test_sealed_request() {
 
     let (server_private_keys, server_public_keys) =
         keypair_opt(SignatureScheme::MLDSA44, EncapsulationScheme::MLKEM512);
-    let server = XIDDocument::new_with_keys(
-        server_private_keys.clone(),
-        server_public_keys.clone(),
+    let server = XIDDocument::new(
+        XIDInceptionKeyOptions::PublicAndPrivateKeys(
+            server_public_keys.clone(),
+            server_private_keys.clone(),
+        ),
+        XIDGenesisMarkOptions::None,
     );
 
     let (client_private_keys, client_public_keys) =
         keypair_opt(SignatureScheme::MLDSA44, EncapsulationScheme::MLKEM512);
-    let client = XIDDocument::new_with_keys(
-        client_private_keys.clone(),
-        client_public_keys.clone(),
+    let client = XIDDocument::new(
+        XIDInceptionKeyOptions::PublicAndPrivateKeys(
+            client_public_keys.clone(),
+            client_private_keys.clone(),
+        ),
+        XIDGenesisMarkOptions::None,
     );
 
     let now = Date::try_from("2024-07-04T11:11:11Z").unwrap();
@@ -302,16 +310,22 @@ fn test_sealed_event() {
 
     let (sender_private_keys, sender_public_keys) =
         keypair_opt(SignatureScheme::MLDSA44, EncapsulationScheme::MLKEM512);
-    let sender = XIDDocument::new_with_keys(
-        sender_private_keys.clone(),
-        sender_public_keys.clone(),
+    let sender = XIDDocument::new(
+        XIDInceptionKeyOptions::PublicAndPrivateKeys(
+            sender_public_keys.clone(),
+            sender_private_keys.clone(),
+        ),
+        XIDGenesisMarkOptions::None,
     );
 
     let (recipient_private_keys, recipient_public_keys) =
         keypair_opt(SignatureScheme::MLDSA44, EncapsulationScheme::MLKEM512);
-    let recipient = XIDDocument::new_with_keys(
-        recipient_private_keys.clone(),
-        recipient_public_keys.clone(),
+    let recipient = XIDDocument::new(
+        XIDInceptionKeyOptions::PublicAndPrivateKeys(
+            recipient_public_keys.clone(),
+            recipient_private_keys.clone(),
+        ),
+        XIDGenesisMarkOptions::None,
     );
 
     let now = Date::try_from("2024-07-04T11:11:11Z").unwrap();

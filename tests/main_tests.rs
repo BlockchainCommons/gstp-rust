@@ -3,7 +3,7 @@ use std::time::Duration;
 use bc_components::{ARID, keypair, keypair_using};
 use bc_envelope::prelude::*;
 use bc_rand::make_fake_random_number_generator;
-use bc_xid::XIDDocument;
+use bc_xid::{XIDDocument, XIDGenesisMarkOptions, XIDInceptionKeyOptions};
 use gstp::prelude::*;
 use hex_literal::hex;
 use indoc::indoc;
@@ -14,7 +14,9 @@ fn request_id() -> ARID {
     ))
 }
 
-fn request_date() -> Date { Date::try_from("2024-07-04T11:11:11Z").unwrap() }
+fn request_date() -> Date {
+    Date::try_from("2024-07-04T11:11:11Z").unwrap()
+}
 
 fn request_continuation() -> Continuation {
     let valid_duration = Duration::from_secs(60);
@@ -154,16 +156,22 @@ fn test_sealed_request() {
     let mut rng = make_fake_random_number_generator();
     let (server_private_keys, server_public_keys) =
         keypair_using(&mut rng).unwrap();
-    let server = XIDDocument::new_with_keys(
-        server_private_keys.clone(),
-        server_public_keys.clone(),
+    let server = XIDDocument::new(
+        XIDInceptionKeyOptions::PublicAndPrivateKeys(
+            server_public_keys.clone(),
+            server_private_keys.clone(),
+        ),
+        XIDGenesisMarkOptions::None,
     );
 
     let (client_private_keys, client_public_keys) =
         keypair_using(&mut rng).unwrap();
-    let client = XIDDocument::new_with_keys(
-        client_private_keys.clone(),
-        client_public_keys.clone(),
+    let client = XIDDocument::new(
+        XIDInceptionKeyOptions::PublicAndPrivateKeys(
+            client_public_keys.clone(),
+            client_private_keys.clone(),
+        ),
+        XIDGenesisMarkOptions::None,
     );
 
     let now = Date::try_from("2024-07-04T11:11:11Z").unwrap();
@@ -235,7 +243,7 @@ fn test_sealed_request() {
                     'hasRecipient': SealedMessage
                 ]
                 'sender': XID(c017c16f) [
-                    'key': PublicKeys(f0d6b2fc) [
+                    'key': PublicKeys(f0d6b2fc, SigningPublicKey(c017c16f, SchnorrPublicKey(92f53715)), EncapsulationPublicKey(57b57f13, X25519PublicKey(57b57f13))) [
                         'allow': 'All'
                     ]
                 ]
@@ -351,7 +359,7 @@ fn test_sealed_request() {
                 ]
                 'result': "Records retrieved: 100-199"
                 'sender': XID(57a4c9d8) [
-                    'key': PublicKeys(f53a5f32) [
+                    'key': PublicKeys(f53a5f32, SigningPublicKey(57a4c9d8, SchnorrPublicKey(d5edb8ba)), EncapsulationPublicKey(822c6133, X25519PublicKey(822c6133))) [
                         'allow': 'All'
                     ]
                 ]
@@ -421,16 +429,22 @@ fn test_sealed_event() {
     let mut rng = make_fake_random_number_generator();
     let (sender_private_keys, sender_public_keys) =
         keypair_using(&mut rng).unwrap();
-    let sender = XIDDocument::new_with_keys(
-        sender_private_keys.clone(),
-        sender_public_keys.clone(),
+    let sender = XIDDocument::new(
+        XIDInceptionKeyOptions::PublicAndPrivateKeys(
+            sender_public_keys.clone(),
+            sender_private_keys.clone(),
+        ),
+        XIDGenesisMarkOptions::None,
     );
 
     let (recipient_private_keys, recipient_public_keys) =
         keypair_using(&mut rng).unwrap();
-    let recipient = XIDDocument::new_with_keys(
-        recipient_private_keys.clone(),
-        recipient_public_keys.clone(),
+    let recipient = XIDDocument::new(
+        XIDInceptionKeyOptions::PublicAndPrivateKeys(
+            recipient_public_keys.clone(),
+            recipient_private_keys.clone(),
+        ),
+        XIDGenesisMarkOptions::None,
     );
 
     let now = Date::try_from("2024-07-04T11:11:11Z").unwrap();
@@ -469,7 +483,7 @@ fn test_sealed_event() {
                 'date': 2024-07-04T11:11:11Z
                 'note': "This is a test"
                 'sender': XID(57a4c9d8) [
-                    'key': PublicKeys(f53a5f32) [
+                    'key': PublicKeys(f53a5f32, SigningPublicKey(57a4c9d8, SchnorrPublicKey(d5edb8ba)), EncapsulationPublicKey(822c6133, X25519PublicKey(822c6133))) [
                         'allow': 'All'
                     ]
                 ]

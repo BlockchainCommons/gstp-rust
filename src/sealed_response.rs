@@ -1,6 +1,8 @@
 use bc_components::{ARID, PrivateKeys};
 use bc_envelope::{Signer, prelude::*};
-use bc_xid::XIDDocument;
+use bc_xid::{
+    XIDGeneratorOptions, XIDPrivateKeyOptions, XIDDocument, XIDSigningOptions,
+};
 
 use crate::{Continuation, Error, Result};
 
@@ -141,9 +143,13 @@ impl SealedResponseBehavior for SealedResponse {
     // Parsing
     //
 
-    fn sender(&self) -> &XIDDocument { self.sender.as_ref() }
+    fn sender(&self) -> &XIDDocument {
+        self.sender.as_ref()
+    }
 
-    fn state(&self) -> Option<&Envelope> { self.state.as_ref() }
+    fn state(&self) -> Option<&Envelope> {
+        self.state.as_ref()
+    }
 
     fn peer_continuation(&self) -> Option<&Envelope> {
         self.peer_continuation.as_ref()
@@ -183,17 +189,29 @@ impl ResponseBehavior for SealedResponse {
         self
     }
 
-    fn is_ok(&self) -> bool { self.response.is_ok() }
+    fn is_ok(&self) -> bool {
+        self.response.is_ok()
+    }
 
-    fn is_err(&self) -> bool { self.response.is_err() }
+    fn is_err(&self) -> bool {
+        self.response.is_err()
+    }
 
-    fn ok(&self) -> Option<&(ARID, Envelope)> { self.response.ok() }
+    fn ok(&self) -> Option<&(ARID, Envelope)> {
+        self.response.ok()
+    }
 
-    fn err(&self) -> Option<&(Option<ARID>, Envelope)> { self.response.err() }
+    fn err(&self) -> Option<&(Option<ARID>, Envelope)> {
+        self.response.err()
+    }
 
-    fn id(&self) -> Option<ARID> { self.response.id() }
+    fn id(&self) -> Option<ARID> {
+        self.response.id()
+    }
 
-    fn expect_id(&self) -> ARID { self.response.expect_id() }
+    fn expect_id(&self) -> ARID {
+        self.response.expect_id()
+    }
 
     fn result(&self) -> bc_envelope::Result<&Envelope> {
         self.response.result()
@@ -206,7 +224,9 @@ impl ResponseBehavior for SealedResponse {
         self.response.extract_result()
     }
 
-    fn error(&self) -> bc_envelope::Result<&Envelope> { self.response.error() }
+    fn error(&self) -> bc_envelope::Result<&Envelope> {
+        self.response.error()
+    }
 
     fn extract_error<T>(&self) -> bc_envelope::Result<T>
     where
@@ -241,7 +261,16 @@ impl SealedResponse {
             .response
             .clone()
             .into_envelope()
-            .add_assertion(known_values::SENDER, self.sender.to_envelope())
+            .add_assertion(
+                known_values::SENDER,
+                self.sender
+                    .to_envelope(
+                        XIDPrivateKeyOptions::default(),
+                        XIDGeneratorOptions::default(),
+                        XIDSigningOptions::default(),
+                    )
+                    .unwrap(),
+            )
             .add_optional_assertion(
                 known_values::SENDER_CONTINUATION,
                 sender_continuation,
