@@ -14,9 +14,7 @@ fn request_id() -> ARID {
     ))
 }
 
-fn request_date() -> Date {
-    Date::try_from("2024-07-04T11:11:11Z").unwrap()
-}
+fn request_date() -> Date { Date::try_from("2024-07-04T11:11:11Z").unwrap() }
 
 fn request_continuation() -> Continuation {
     let valid_duration = Duration::from_secs(60);

@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use bc_components::{ARID, EncapsulationScheme, SignatureScheme, keypair_opt};
 use bc_envelope::prelude::*;
-use bc_xid::{XIDGenesisMarkOptions, XIDInceptionKeyOptions, XIDDocument};
+use bc_xid::{XIDDocument, XIDGenesisMarkOptions, XIDInceptionKeyOptions};
 use gstp::prelude::*;
 use hex_literal::hex;
 use indoc::indoc;
@@ -12,9 +12,7 @@ fn request_id() -> ARID {
         "c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc"
     ))
 }
-fn request_date() -> Date {
-    Date::try_from("2024-07-04T11:11:11Z").unwrap()
-}
+fn request_date() -> Date { Date::try_from("2024-07-04T11:11:11Z").unwrap() }
 
 fn request_continuation() -> Continuation {
     let valid_duration = Duration::from_secs(60);

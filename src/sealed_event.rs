@@ -100,21 +100,13 @@ where
         }
     }
 
-    fn content(&self) -> &T {
-        self.event.content()
-    }
+    fn content(&self) -> &T { self.event.content() }
 
-    fn id(&self) -> ARID {
-        self.event.id()
-    }
+    fn id(&self) -> ARID { self.event.id() }
 
-    fn note(&self) -> &str {
-        self.event.note()
-    }
+    fn note(&self) -> &str { self.event.note() }
 
-    fn date(&self) -> Option<&Date> {
-        self.event.date()
-    }
+    fn date(&self) -> Option<&Date> { self.event.date() }
 }
 
 pub trait SealedEventBehavior<T>: EventBehavior<T>
@@ -204,17 +196,11 @@ where
         self
     }
 
-    fn event(&self) -> &Event<T> {
-        &self.event
-    }
+    fn event(&self) -> &Event<T> { &self.event }
 
-    fn sender(&self) -> &XIDDocument {
-        &self.sender
-    }
+    fn sender(&self) -> &XIDDocument { &self.sender }
 
-    fn state(&self) -> Option<&Envelope> {
-        self.state.as_ref()
-    }
+    fn state(&self) -> Option<&Envelope> { self.state.as_ref() }
 
     fn peer_continuation(&self) -> Option<&Envelope> {
         self.peer_continuation.as_ref()
@@ -229,9 +215,7 @@ where
         + Clone
         + PartialEq,
 {
-    fn from(sealed_event: SealedEvent<T>) -> Self {
-        sealed_event.event
-    }
+    fn from(sealed_event: SealedEvent<T>) -> Self { sealed_event.event }
 }
 
 impl<T> SealedEvent<T>
@@ -322,10 +306,10 @@ where
         let event_envelope = signed_envelope.verify(sender_verification_key)?;
         let peer_continuation = event_envelope
             .optional_object_for_predicate(known_values::SENDER_CONTINUATION)?;
-        if let Some(some_peer_continuation) = peer_continuation.clone() {
-            if !some_peer_continuation.subject().is_encrypted() {
-                return Err(Error::PeerContinuationNotEncrypted);
-            }
+        if let Some(some_peer_continuation) = peer_continuation.clone()
+            && !some_peer_continuation.subject().is_encrypted()
+        {
+            return Err(Error::PeerContinuationNotEncrypted);
         }
         let encrypted_continuation = event_envelope
             .optional_object_for_predicate(

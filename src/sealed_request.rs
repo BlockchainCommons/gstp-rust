@@ -1,7 +1,7 @@
 use bc_components::{ARID, PrivateKeys};
 use bc_envelope::{Signer, prelude::*};
 use bc_xid::{
-    XIDGeneratorOptions, XIDPrivateKeyOptions, XIDDocument, XIDSigningOptions,
+    XIDDocument, XIDGeneratorOptions, XIDPrivateKeyOptions, XIDSigningOptions,
 };
 
 use crate::{Continuation, Error, Result};
@@ -85,9 +85,7 @@ impl ExpressionBehavior for SealedRequest {
         self
     }
 
-    fn function(&self) -> &Function {
-        self.request.function()
-    }
+    fn function(&self) -> &Function { self.request.function() }
 
     fn expression_envelope(&self) -> &Envelope {
         self.request.expression_envelope()
@@ -150,21 +148,13 @@ impl RequestBehavior for SealedRequest {
         self
     }
 
-    fn body(&self) -> &Expression {
-        self.request.body()
-    }
+    fn body(&self) -> &Expression { self.request.body() }
 
-    fn id(&self) -> ARID {
-        self.request.id()
-    }
+    fn id(&self) -> ARID { self.request.id() }
 
-    fn note(&self) -> &str {
-        self.request.note()
-    }
+    fn note(&self) -> &str { self.request.note() }
 
-    fn date(&self) -> Option<&Date> {
-        self.request.date()
-    }
+    fn date(&self) -> Option<&Date> { self.request.date() }
 }
 
 pub trait SealedRequestBehavior: RequestBehavior {
@@ -236,17 +226,11 @@ impl SealedRequestBehavior for SealedRequest {
         self
     }
 
-    fn request(&self) -> &Request {
-        &self.request
-    }
+    fn request(&self) -> &Request { &self.request }
 
-    fn sender(&self) -> &XIDDocument {
-        &self.sender
-    }
+    fn sender(&self) -> &XIDDocument { &self.sender }
 
-    fn state(&self) -> Option<&Envelope> {
-        self.state.as_ref()
-    }
+    fn state(&self) -> Option<&Envelope> { self.state.as_ref() }
 
     fn peer_continuation(&self) -> Option<&Envelope> {
         self.peer_continuation.as_ref()
@@ -254,9 +238,7 @@ impl SealedRequestBehavior for SealedRequest {
 }
 
 impl From<SealedRequest> for Request {
-    fn from(sealed_request: SealedRequest) -> Self {
-        sealed_request.request
-    }
+    fn from(sealed_request: SealedRequest) -> Self { sealed_request.request }
 }
 
 impl From<SealedRequest> for Expression {
