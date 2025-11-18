@@ -1,4 +1,4 @@
-use bc_components::{ARID, PrivateKeys};
+use bc_components::{ARID, Encrypter, PrivateKeys};
 use bc_envelope::{Signer, prelude::*};
 use bc_xid::{
     XIDDocument, XIDGeneratorOptions, XIDPrivateKeyOptions, XIDSigningOptions,
@@ -226,11 +226,23 @@ where
         + Clone
         + PartialEq,
 {
+    /// Creates an envelope that can be decrypted by zero or one recipient.
     pub fn to_envelope(
         &self,
         valid_until: Option<&Date>,
         sender: Option<&dyn Signer>,
         recipient: Option<&XIDDocument>,
+    ) -> Result<Envelope> {
+        let recipients: Vec<&XIDDocument> = recipient.into_iter().collect();
+        self.to_envelope_for_recipients(valid_until, sender, &recipients)
+    }
+
+    /// Creates an envelope that can be decrypted by zero or more recipients.
+    pub fn to_envelope_for_recipients(
+        &self,
+        valid_until: Option<&Date>,
+        sender: Option<&dyn Signer>,
+        recipients: &[&XIDDocument],
     ) -> Result<Envelope> {
         let sender_encryption_key = self
             .sender
@@ -278,11 +290,18 @@ where
             result = result.sign(sender_private_key);
         }
 
-        if let Some(recipient) = recipient {
-            let recipient_encryption_key = recipient
-                .encryption_key()
-                .ok_or(Error::RecipientMissingEncryptionKey)?;
-            result = result.encrypt_to_recipient(recipient_encryption_key);
+        if !recipients.is_empty() {
+            let recipient_keys = recipients
+                .iter()
+                .map(|recipient| {
+                    recipient
+                        .encryption_key()
+                        .ok_or(Error::RecipientMissingEncryptionKey)
+                        .map(|key| key as &dyn Encrypter)
+                })
+                .collect::<Result<Vec<&dyn Encrypter>>>()?;
+            result =
+                result.wrap().encrypt_subject_to_recipients(&recipient_keys)?;
         }
 
         Ok(result)

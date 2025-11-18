@@ -417,6 +417,168 @@ fn test_sealed_request() {
 }
 
 #[test]
+fn test_multi_recipient_request_and_response() {
+    bc_envelope::register_tags();
+
+    let mut rng = make_fake_random_number_generator();
+    let (server_private_keys, server_public_keys) =
+        keypair_using(&mut rng).unwrap();
+    let server = XIDDocument::new(
+        XIDInceptionKeyOptions::PublicAndPrivateKeys(
+            server_public_keys.clone(),
+            server_private_keys.clone(),
+        ),
+        XIDGenesisMarkOptions::None,
+    );
+
+    let (auditor_private_keys, auditor_public_keys) =
+        keypair_using(&mut rng).unwrap();
+    let auditor = XIDDocument::new(
+        XIDInceptionKeyOptions::PublicAndPrivateKeys(
+            auditor_public_keys.clone(),
+            auditor_private_keys.clone(),
+        ),
+        XIDGenesisMarkOptions::None,
+    );
+
+    let (client_private_keys, client_public_keys) =
+        keypair_using(&mut rng).unwrap();
+    let client = XIDDocument::new(
+        XIDInceptionKeyOptions::PublicAndPrivateKeys(
+            client_public_keys.clone(),
+            client_private_keys.clone(),
+        ),
+        XIDGenesisMarkOptions::None,
+    );
+
+    let now = Date::try_from("2024-07-04T11:11:11Z").unwrap();
+
+    // Server previously provided this continuation back to the client.
+    let server_state = Expression::new("nextPage")
+        .with_parameter("fromRecord", 100)
+        .with_parameter("toRecord", 199);
+    let server_continuation = Continuation::new(server_state)
+        .with_valid_until(now.clone() + Duration::from_secs(60));
+    let server_continuation =
+        server_continuation.to_envelope(Some(&server_public_keys));
+
+    let client_continuation_valid_until = now.clone() + Duration::from_secs(60);
+    let client_request = SealedRequest::new("test", request_id(), &client)
+        .with_parameter("param1", 42)
+        .with_parameter("param2", "hello")
+        .with_note("This is a test")
+        .with_date(&now)
+        .with_state("The state of things.")
+        .with_peer_continuation(server_continuation);
+
+    let recipients = vec![&server, &auditor];
+    let sealed_client_request_envelope = client_request
+        .to_envelope_for_recipients(
+            Some(&client_continuation_valid_until),
+            Some(&client_private_keys),
+            &recipients,
+        )
+        .unwrap();
+
+    #[rustfmt::skip]
+    assert_eq!(
+        sealed_client_request_envelope.format(),
+        (indoc! {r#"
+            ENCRYPTED [
+                'hasRecipient': SealedMessage
+                'hasRecipient': SealedMessage
+            ]
+        "#})
+        .trim()
+    );
+
+    let sealed_messages = sealed_client_request_envelope.recipients().unwrap();
+    assert_eq!(sealed_messages.len(), 2);
+    assert!(sealed_messages.iter().any(|sealed_message| {
+        sealed_message.decrypt(&server_private_keys).is_ok()
+    }));
+    assert!(sealed_messages.iter().any(|sealed_message| {
+        sealed_message.decrypt(&auditor_private_keys).is_ok()
+    }));
+
+    sealed_client_request_envelope
+        .decrypt_to_recipient(&server_private_keys)
+        .expect("server can decrypt multi-recipient request");
+
+    let parsed_client_request_server = SealedRequest::try_from_envelope(
+        &sealed_client_request_envelope,
+        None,
+        Some(&now),
+        &server_private_keys,
+    )
+    .unwrap();
+    sealed_client_request_envelope
+        .decrypt_to_recipient(&auditor_private_keys)
+        .expect("auditor can decrypt multi-recipient request");
+
+    assert_eq!(
+        parsed_client_request_server
+            .extract_object_for_parameter::<i32>("param1")
+            .unwrap(),
+        42
+    );
+    assert_eq!(
+        parsed_client_request_server
+            .extract_object_for_parameter::<String>("param2")
+            .unwrap(),
+        "hello"
+    );
+    let server_state = Expression::new("nextPage")
+        .with_parameter("fromRecord", 200)
+        .with_parameter("toRecord", 299);
+    let peer_continuation = parsed_client_request_server.peer_continuation();
+    let server_response =
+        SealedResponse::new_success(parsed_client_request_server.id(), &server)
+            .with_result("Records retrieved: 100-199")
+            .with_state(server_state)
+            .with_peer_continuation(peer_continuation);
+
+    let response_recipients = vec![&client, &auditor];
+    let sealed_server_response_envelope = server_response
+        .to_envelope_for_recipients(
+            Some(&(now.clone() + Duration::from_secs(60))),
+            Some(&server_private_keys),
+            &response_recipients,
+        )
+        .unwrap();
+
+    #[rustfmt::skip]
+    assert_eq!(
+        sealed_server_response_envelope.format(),
+        (indoc! {r#"
+            ENCRYPTED [
+                'hasRecipient': SealedMessage
+                'hasRecipient': SealedMessage
+            ]
+        "#})
+        .trim()
+    );
+
+    let parsed_server_response_client =
+        SealedResponse::try_from_encrypted_envelope(
+            &sealed_server_response_envelope,
+            Some(parsed_client_request_server.id()),
+            Some(&now),
+            &client_private_keys,
+        )
+        .unwrap();
+    assert_eq!(
+        parsed_server_response_client
+            .extract_result::<String>()
+            .unwrap(),
+        "Records retrieved: 100-199"
+    );
+    sealed_server_response_envelope
+        .decrypt_to_recipient(&auditor_private_keys)
+        .expect("auditor can decrypt multi-recipient response");
+}
+
+#[test]
 fn test_sealed_event() {
     bc_envelope::register_tags();
 
@@ -518,4 +680,87 @@ fn test_sealed_event() {
     assert_eq!(parsed_event.content(), "test");
     assert_eq!(parsed_event.note(), "This is a test");
     assert_eq!(parsed_event.date(), Some(&now));
+}
+
+#[test]
+fn test_sealed_event_multiple_recipients() {
+    bc_envelope::register_tags();
+
+    let mut rng = make_fake_random_number_generator();
+    let (sender_private_keys, sender_public_keys) =
+        keypair_using(&mut rng).unwrap();
+    let sender = XIDDocument::new(
+        XIDInceptionKeyOptions::PublicAndPrivateKeys(
+            sender_public_keys.clone(),
+            sender_private_keys.clone(),
+        ),
+        XIDGenesisMarkOptions::None,
+    );
+
+    let (recipient_a_private_keys, recipient_a_public_keys) =
+        keypair_using(&mut rng).unwrap();
+    let recipient_a = XIDDocument::new(
+        XIDInceptionKeyOptions::PublicAndPrivateKeys(
+            recipient_a_public_keys.clone(),
+            recipient_a_private_keys.clone(),
+        ),
+        XIDGenesisMarkOptions::None,
+    );
+
+    let (recipient_b_private_keys, recipient_b_public_keys) =
+        keypair_using(&mut rng).unwrap();
+    let recipient_b = XIDDocument::new(
+        XIDInceptionKeyOptions::PublicAndPrivateKeys(
+            recipient_b_public_keys.clone(),
+            recipient_b_private_keys.clone(),
+        ),
+        XIDGenesisMarkOptions::None,
+    );
+
+    let recipients = vec![&recipient_a, &recipient_b];
+    let valid_until = Date::try_from("2024-07-04T11:12:11Z").unwrap();
+
+    let event = SealedEvent::<Expression>::new(
+        Expression::new("sync"),
+        request_id(),
+        &sender,
+    )
+    .with_note("Escrow update")
+    .with_state("state");
+    let sealed_event_envelope = event
+        .to_envelope_for_recipients(
+            Some(&valid_until),
+            Some(&sender_private_keys),
+            &recipients,
+        )
+        .unwrap();
+
+    #[rustfmt::skip]
+    assert_eq!(
+        sealed_event_envelope.format(),
+        (indoc! {r#"
+            ENCRYPTED [
+                'hasRecipient': SealedMessage
+                'hasRecipient': SealedMessage
+            ]
+        "#})
+        .trim()
+    );
+
+    let parsed_event_a = SealedEvent::<Expression>::try_from_envelope(
+        &sealed_event_envelope,
+        Some(request_id()),
+        None,
+        &recipient_a_private_keys,
+    )
+    .unwrap();
+    let parsed_event_b = SealedEvent::<Expression>::try_from_envelope(
+        &sealed_event_envelope,
+        Some(request_id()),
+        None,
+        &recipient_b_private_keys,
+    )
+    .unwrap();
+
+    assert_eq!(parsed_event_a.note(), parsed_event_b.note());
 }
