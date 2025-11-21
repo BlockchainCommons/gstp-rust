@@ -154,7 +154,7 @@ impl RequestBehavior for SealedRequest {
 
     fn note(&self) -> &str { self.request.note() }
 
-    fn date(&self) -> Option<&Date> { self.request.date() }
+    fn date(&self) -> Option<Date> { self.request.date() }
 }
 
 pub trait SealedRequestBehavior: RequestBehavior {
@@ -255,7 +255,7 @@ impl SealedRequest {
     /// depending on whether `recipient` is `None` or `Some`.
     pub fn to_envelope(
         &self,
-        valid_until: Option<&Date>,
+        valid_until: Option<Date>,
         sender: Option<&dyn Signer>,
         recipient: Option<&XIDDocument>,
     ) -> Result<Envelope> {
@@ -266,7 +266,7 @@ impl SealedRequest {
     /// Creates an envelope that can be decrypted by zero or more recipients.
     pub fn to_envelope_for_recipients(
         &self,
-        valid_until: Option<&Date>,
+        valid_until: Option<Date>,
         sender: Option<&dyn Signer>,
         recipients: &[&XIDDocument],
     ) -> Result<Envelope> {
@@ -331,7 +331,7 @@ impl SealedRequest {
     pub fn try_from_envelope(
         encrypted_envelope: &Envelope,
         id: Option<ARID>,
-        now: Option<&Date>,
+        now: Option<Date>,
         recipient: &PrivateKeys,
     ) -> Result<Self> {
         let signed_envelope =

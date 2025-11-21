@@ -43,7 +43,7 @@ impl Continuation {
     }
 
     pub fn with_valid_until(mut self, valid_until: impl AsRef<Date>) -> Self {
-        self.valid_until = Some(valid_until.as_ref().clone());
+        self.valid_until = Some(*valid_until.as_ref());
         self
     }
 
@@ -70,9 +70,9 @@ impl Continuation {
 
     pub fn id(&self) -> Option<ARID> { self.valid_id }
 
-    pub fn valid_until(&self) -> Option<&Date> { self.valid_until.as_ref() }
+    pub fn valid_until(&self) -> Option<Date> { self.valid_until }
 
-    pub fn is_valid_date(&self, now: Option<&Date>) -> bool {
+    pub fn is_valid_date(&self, now: Option<Date>) -> bool {
         match now {
             Some(now) => self
                 .valid_until()
@@ -90,7 +90,7 @@ impl Continuation {
         }
     }
 
-    pub fn is_valid(&self, now: Option<&Date>, id: Option<ARID>) -> bool {
+    pub fn is_valid(&self, now: Option<Date>, id: Option<ARID>) -> bool {
         self.is_valid_date(now) && self.is_valid_id(id)
     }
 }
@@ -103,7 +103,7 @@ impl Continuation {
             .add_optional_assertion(known_values::ID, self.valid_id)
             .add_optional_assertion(
                 known_values::VALID_UNTIL,
-                self.valid_until.clone(),
+                self.valid_until,
             );
 
         if let Some(sender) = recipient {
@@ -116,7 +116,7 @@ impl Continuation {
     pub fn try_from_envelope(
         encrypted_envelope: &Envelope,
         id: Option<ARID>,
-        now: Option<&Date>,
+        now: Option<Date>,
         recipient: Option<&PrivateKeys>,
     ) -> Result<Self> {
         let envelope = if let Some(recipient) = recipient {

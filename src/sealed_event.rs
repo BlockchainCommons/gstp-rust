@@ -106,7 +106,7 @@ where
 
     fn note(&self) -> &str { self.event.note() }
 
-    fn date(&self) -> Option<&Date> { self.event.date() }
+    fn date(&self) -> Option<Date> { self.event.date() }
 }
 
 pub trait SealedEventBehavior<T>: EventBehavior<T>
@@ -229,7 +229,7 @@ where
     /// Creates an envelope that can be decrypted by zero or one recipient.
     pub fn to_envelope(
         &self,
-        valid_until: Option<&Date>,
+        valid_until: Option<Date>,
         sender: Option<&dyn Signer>,
         recipient: Option<&XIDDocument>,
     ) -> Result<Envelope> {
@@ -240,7 +240,7 @@ where
     /// Creates an envelope that can be decrypted by zero or more recipients.
     pub fn to_envelope_for_recipients(
         &self,
-        valid_until: Option<&Date>,
+        valid_until: Option<Date>,
         sender: Option<&dyn Signer>,
         recipients: &[&XIDDocument],
     ) -> Result<Envelope> {
@@ -300,8 +300,9 @@ where
                         .map(|key| key as &dyn Encrypter)
                 })
                 .collect::<Result<Vec<&dyn Encrypter>>>()?;
-            result =
-                result.wrap().encrypt_subject_to_recipients(&recipient_keys)?;
+            result = result
+                .wrap()
+                .encrypt_subject_to_recipients(&recipient_keys)?;
         }
 
         Ok(result)
@@ -310,7 +311,7 @@ where
     pub fn try_from_envelope(
         encrypted_envelope: &Envelope,
         expected_id: Option<ARID>,
-        now: Option<&Date>,
+        now: Option<Date>,
         recipient_private_key: &PrivateKeys,
     ) -> Result<Self> {
         let signed_envelope =

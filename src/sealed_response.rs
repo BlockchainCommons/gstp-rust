@@ -225,7 +225,7 @@ impl SealedResponse {
     /// [`Self::to_envelope_for_recipients`].
     pub fn to_envelope(
         &self,
-        valid_until: Option<&Date>,
+        valid_until: Option<Date>,
         sender: Option<&dyn Signer>,
         recipient: Option<&XIDDocument>,
     ) -> Result<Envelope> {
@@ -236,7 +236,7 @@ impl SealedResponse {
     /// Creates an envelope that can be decrypted by zero or more recipients.
     pub fn to_envelope_for_recipients(
         &self,
-        valid_until: Option<&Date>,
+        valid_until: Option<Date>,
         sender: Option<&dyn Signer>,
         recipients: &[&XIDDocument],
     ) -> Result<Envelope> {
@@ -291,8 +291,9 @@ impl SealedResponse {
                         .map(|key| key as &dyn Encrypter)
                 })
                 .collect::<Result<Vec<&dyn Encrypter>>>()?;
-            result =
-                result.wrap().encrypt_subject_to_recipients(&recipient_keys)?;
+            result = result
+                .wrap()
+                .encrypt_subject_to_recipients(&recipient_keys)?;
         }
 
         Ok(result)
@@ -301,7 +302,7 @@ impl SealedResponse {
     pub fn try_from_encrypted_envelope(
         encrypted_envelope: &Envelope,
         expected_id: Option<ARID>,
-        now: Option<&Date>,
+        now: Option<Date>,
         recipient_private_key: &PrivateKeys,
     ) -> Result<Self> {
         let signed_envelope =

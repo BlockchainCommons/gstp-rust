@@ -112,7 +112,7 @@ fn test_encrypted_continuation() {
     let parsed_continuation = Continuation::try_from_envelope(
         &envelope,
         Some(request_id()),
-        valid_now.as_ref(),
+        valid_now,
         Some(&sender_private_keys),
     )
     .unwrap();
@@ -128,7 +128,7 @@ fn test_encrypted_continuation() {
     let invalid_continuation_error = Continuation::try_from_envelope(
         &envelope,
         Some(request_id()),
-        invalid_now.as_ref(),
+        invalid_now,
         Some(&sender_private_keys),
     );
     assert!(invalid_continuation_error.is_err());
@@ -137,7 +137,7 @@ fn test_encrypted_continuation() {
     let invalid_continuation_error = Continuation::try_from_envelope(
         &envelope,
         Some(invalid_id),
-        valid_now.as_ref(),
+        valid_now,
         Some(&sender_private_keys),
     );
     assert!(invalid_continuation_error.is_err());
@@ -181,7 +181,7 @@ fn test_sealed_request() {
     //
 
     // The server sent this response 30 seconds ago.
-    let server_response_date = now.clone() - Duration::from_secs(30);
+    let server_response_date = now - Duration::from_secs(30);
     // And its continuation is valid for 60 seconds.
     let server_continuation_valid_until =
         server_response_date + Duration::from_secs(60);
@@ -204,12 +204,12 @@ fn test_sealed_request() {
     //
 
     // The client's continuation is valid for 60 seconds from now.
-    let client_continuation_valid_until = now.clone() + Duration::from_secs(60);
+    let client_continuation_valid_until = now + Duration::from_secs(60);
     let client_request = SealedRequest::new("test", request_id(), &client)
         .with_parameter("param1", 42)
         .with_parameter("param2", "hello")
         .with_note("This is a test")
-        .with_date(&now)
+        .with_date(now)
         .with_state("The state of things.")
         .with_peer_continuation(server_continuation);
 
@@ -221,7 +221,7 @@ fn test_sealed_request() {
 
     let signed_client_request_envelope = client_request
         .to_envelope(
-            Some(&client_continuation_valid_until),
+            Some(client_continuation_valid_until),
             Some(&client_private_keys),
             None,
         )
@@ -262,7 +262,7 @@ fn test_sealed_request() {
 
     let sealed_client_request_envelope = client_request
         .to_envelope(
-            Some(&client_continuation_valid_until),
+            Some(client_continuation_valid_until),
             Some(&client_private_keys),
             Some(&server),
         )
@@ -278,7 +278,7 @@ fn test_sealed_request() {
     let parsed_client_request = SealedRequest::try_from_envelope(
         &sealed_client_request_envelope,
         None,
-        Some(&now),
+        Some(now),
         &server_private_keys,
     )
     .unwrap();
@@ -299,7 +299,7 @@ fn test_sealed_request() {
         "hello"
     );
     assert_eq!(parsed_client_request.note(), "This is a test");
-    assert_eq!(parsed_client_request.date(), Some(&now));
+    assert_eq!(parsed_client_request.date(), Some(now));
 
     //
     // The server can now use the continuation state amd execute the request.
@@ -339,10 +339,10 @@ fn test_sealed_request() {
     // would skip this and go straight to the next step.
     //
 
-    let server_continuation_valid_until = now.clone() + Duration::from_secs(60);
+    let server_continuation_valid_until = now + Duration::from_secs(60);
     let signed_server_response_envelope = server_response
         .to_envelope(
-            Some(&server_continuation_valid_until),
+            Some(server_continuation_valid_until),
             Some(&server_private_keys),
             None,
         )
@@ -377,7 +377,7 @@ fn test_sealed_request() {
 
     let sealed_server_response_envelope = server_response
         .to_envelope(
-            Some(&server_continuation_valid_until),
+            Some(server_continuation_valid_until),
             Some(&server_private_keys),
             Some(&client),
         )
@@ -393,7 +393,7 @@ fn test_sealed_request() {
     let parsed_server_response = SealedResponse::try_from_encrypted_envelope(
         &sealed_server_response_envelope,
         Some(parsed_client_request.id()),
-        Some(&now),
+        Some(now),
         &client_private_keys,
     )
     .unwrap();
@@ -458,23 +458,23 @@ fn test_multi_recipient_request_and_response() {
         .with_parameter("fromRecord", 100)
         .with_parameter("toRecord", 199);
     let server_continuation = Continuation::new(server_state)
-        .with_valid_until(now.clone() + Duration::from_secs(60));
+        .with_valid_until(now + Duration::from_secs(60));
     let server_continuation =
         server_continuation.to_envelope(Some(&server_public_keys));
 
-    let client_continuation_valid_until = now.clone() + Duration::from_secs(60);
+    let client_continuation_valid_until = now + Duration::from_secs(60);
     let client_request = SealedRequest::new("test", request_id(), &client)
         .with_parameter("param1", 42)
         .with_parameter("param2", "hello")
         .with_note("This is a test")
-        .with_date(&now)
+        .with_date(now)
         .with_state("The state of things.")
         .with_peer_continuation(server_continuation);
 
     let recipients = vec![&server, &auditor];
     let sealed_client_request_envelope = client_request
         .to_envelope_for_recipients(
-            Some(&client_continuation_valid_until),
+            Some(client_continuation_valid_until),
             Some(&client_private_keys),
             &recipients,
         )
@@ -508,7 +508,7 @@ fn test_multi_recipient_request_and_response() {
     let parsed_client_request_server = SealedRequest::try_from_envelope(
         &sealed_client_request_envelope,
         None,
-        Some(&now),
+        Some(now),
         &server_private_keys,
     )
     .unwrap();
@@ -541,7 +541,7 @@ fn test_multi_recipient_request_and_response() {
     let response_recipients = vec![&client, &auditor];
     let sealed_server_response_envelope = server_response
         .to_envelope_for_recipients(
-            Some(&(now.clone() + Duration::from_secs(60))),
+            Some(now + Duration::from_secs(60)),
             Some(&server_private_keys),
             &response_recipients,
         )
@@ -563,7 +563,7 @@ fn test_multi_recipient_request_and_response() {
         SealedResponse::try_from_encrypted_envelope(
             &sealed_server_response_envelope,
             Some(parsed_client_request_server.id()),
-            Some(&now),
+            Some(now),
             &client_private_keys,
         )
         .unwrap();
@@ -616,7 +616,7 @@ fn test_sealed_event() {
 
     let event = SealedEvent::<String>::new("test", request_id(), &sender)
         .with_note("This is a test")
-        .with_date(now.clone());
+        .with_date(now);
 
     //
     // We examine the form of the event envelope after it is signed by the
@@ -679,7 +679,7 @@ fn test_sealed_event() {
     .unwrap();
     assert_eq!(parsed_event.content(), "test");
     assert_eq!(parsed_event.note(), "This is a test");
-    assert_eq!(parsed_event.date(), Some(&now));
+    assert_eq!(parsed_event.date(), Some(now));
 }
 
 #[test]
@@ -729,7 +729,7 @@ fn test_sealed_event_multiple_recipients() {
     .with_state("state");
     let sealed_event_envelope = event
         .to_envelope_for_recipients(
-            Some(&valid_until),
+            Some(valid_until),
             Some(&sender_private_keys),
             &recipients,
         )
