@@ -143,7 +143,7 @@ impl RequestBehavior for SealedRequest {
         self
     }
 
-    fn with_date(mut self, date: impl AsRef<Date>) -> Self {
+    fn with_date(mut self, date: Date) -> Self {
         self.request = self.request.with_date(date);
         self
     }

@@ -12,11 +12,11 @@ keywords = ["cryptography"]                                                     
 categories = ["cryptography"]                                                                                                                                 # https://crates.io/category_slugs
 
 [dependencies]
-dcbor = { version = "^0.23.3", features = ["multithreaded"] }
+dcbor = { version = "^0.24.0", features = ["multithreaded"] }
 bc-rand = "^0.4.2"
-bc-components = "^0.28.0"
-bc-envelope = "^0.37.0"
-bc-xid = "^0.16.0"
+bc-components = "^0.29.0"
+bc-envelope = "^0.38.0"
+bc-xid = "^0.17.0"
 
 thiserror = "^2.0"
 

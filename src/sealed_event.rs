@@ -91,7 +91,7 @@ where
         }
     }
 
-    fn with_date(self, date: impl AsRef<Date>) -> Self {
+    fn with_date(self, date: Date) -> Self {
         Self {
             event: self.event.with_date(date),
             sender: self.sender,

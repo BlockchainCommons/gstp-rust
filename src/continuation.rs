@@ -42,15 +42,12 @@ impl Continuation {
         self
     }
 
-    pub fn with_valid_until(mut self, valid_until: impl AsRef<Date>) -> Self {
-        self.valid_until = Some(*valid_until.as_ref());
+    pub fn with_valid_until(mut self, valid_until: Date) -> Self {
+        self.valid_until = Some(valid_until);
         self
     }
 
-    pub fn with_optional_valid_until(
-        self,
-        valid_until: Option<impl AsRef<Date>>,
-    ) -> Self {
+    pub fn with_optional_valid_until(self, valid_until: Option<Date>) -> Self {
         if let Some(valid_until) = valid_until {
             return self.with_valid_until(valid_until);
         }
