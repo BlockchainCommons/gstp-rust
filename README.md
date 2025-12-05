@@ -14,7 +14,7 @@ Gordian Sealed Transaction Protocol (GSTP) is a secure, transport-agnostic commu
 
 ```toml
 [dependencies]
-gstp = "0.12.0"
+gstp = "0.13.0"
 ```
 
 ## Specification
@@ -46,6 +46,9 @@ Because this library is still in a community review stage, it should not be used
 See [Blockchain Commons' Development Phases](https://github.com/BlockchainCommons/Community/blob/master/release-path.md).
 
 ### Version History
+
+- **0.13.0** - December 5, 2025
+  - Align to dependencies.
 
 - **0.12.0** - December 4, 2025
   - Add multi-recipient sealing APIs for requests, responses, and events.
